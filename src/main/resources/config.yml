@@ -1,0 +1,5 @@
+language: zh-TW
+storage:
+  backend: SQLITE
+  schema-version: 1
+  directory: storage

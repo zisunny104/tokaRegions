@@ -1,0 +1,16 @@
+name: tokaRegions
+main: dev.toka.regions.Main
+version: "0.1.0"
+api: ["1.0.4"]
+load: POSTWORLD
+softdepend: [tokaProfiles, tokaEconomy, tokaLand]
+permissions:
+  tokaregions.admin:
+    description: 管理區域、稅務級距與個人稅率調整
+    default: op
+  tokaregions.tax-exempt:
+    description: 購地免稅（價格不加稅）
+    default: op
+  tokaregions.tax-reduced:
+    description: 購地稅率減半
+    default: false
