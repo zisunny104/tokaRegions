@@ -194,6 +194,7 @@ public final class RegionCommand extends Command {
 
     private void transfer(CommandSender sender, UUID from, UUID to, long amount) {
         if (amount <= 0) throw new IllegalArgumentException("AMOUNT");
+        plugin.getLogger().info("國庫轉帳：" + sender.getName() + " " + from + " -> " + to + " " + amount);
         // A fresh operation id per command run: pressing enter twice moves money twice, but a retry of one run cannot.
         plugin.economy().transfer(from, to, amount, "treasury:" + UUID.randomUUID()).whenComplete((status, error) ->
                 plugin.getServer().getScheduler().scheduleTask(plugin, () -> {

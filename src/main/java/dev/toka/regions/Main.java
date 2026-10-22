@@ -55,7 +55,15 @@ public final class Main extends PluginBase implements Listener {
             getServer().getPluginManager().registerEvents(selection, this);
             getServer().getPluginManager().registerEvents(this, this);
             command = new RegionCommand(this);
-            getServer().getCommandMap().register("tokaRegions", command);
+            var commands = getServer().getCommandMap();
+            var existing = commands.getCommand("region");
+            if (existing != null && existing != command) {
+                getLogger().warning("/region 已由其他插件註冊；請先停用該入口再重啟。此次不註冊替代指令。");
+                command = null;
+            } else if (!commands.register("tokaRegions", command) || commands.getCommand("region") != command) {
+                getLogger().error("無法註冊指令 /region；請檢查指令衝突。");
+                command = null;
+            }
             if (LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
             ensureAccounts();
             getLogger().info("區域資料載入完成，共 " + regions.all().size() + " 個；儲存格式：" + backend);

@@ -6,6 +6,7 @@ import java.util.*;
 public final class RegionIndex {
     private final Map<UUID, Region> byId;
     private final Map<String, List<Region>> byWorld = new HashMap<>();
+    private final Optional<Region> main;
 
     public RegionIndex(Collection<Region> regions) {
         Map<UUID, Region> ids = new LinkedHashMap<>();
@@ -20,6 +21,7 @@ public final class RegionIndex {
             for (int j = i + 1; j < all.size(); j++)
                 if (all.get(i).overlaps(all.get(j))) throw new IllegalArgumentException("regions overlap: " + all.get(i).name() + ", " + all.get(j).name());
         byId = Map.copyOf(ids);
+        main = all.stream().filter(r -> r.treasury() == Region.Treasury.MAIN).findFirst();
         all.forEach(region -> byWorld.computeIfAbsent(region.world(), w -> new ArrayList<>()).add(region));
     }
 
@@ -33,9 +35,7 @@ public final class RegionIndex {
         return byId.values().stream().filter(r -> r.name().equalsIgnoreCase(name)).findFirst();
     }
 
-    public Optional<Region> mainAccountRegion() {
-        return byId.values().stream().filter(r -> r.treasury() == Region.Treasury.MAIN).findFirst();
-    }
+    public Optional<Region> mainAccountRegion() { return main; }
 
     /** The account that receives payments for land in the region: its own, else the main one, else none. */
     public Optional<UUID> accountFor(Region region) {

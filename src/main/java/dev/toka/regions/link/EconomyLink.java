@@ -2,7 +2,6 @@ package dev.toka.regions.link;
 
 import cn.nukkit.Server;
 import cn.nukkit.plugin.Plugin;
-import java.lang.reflect.Method;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
