@@ -1,8 +1,8 @@
 package dev.toka.regions.model;
 
-/** One block-aligned box of a region. Corners are normalized so min never exceeds max. */
-public record RegionBox(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
-    public RegionBox {
+/** One block-aligned part of a region. Corners are normalized so min never exceeds max. */
+public record RegionSelection(int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
+    public RegionSelection {
         int x1 = Math.min(minX, maxX), x2 = Math.max(minX, maxX);
         int y1 = Math.min(minY, maxY), y2 = Math.max(minY, maxY);
         int z1 = Math.min(minZ, maxZ), z2 = Math.max(minZ, maxZ);
@@ -13,7 +13,7 @@ public record RegionBox(int minX, int minY, int minZ, int maxX, int maxY, int ma
         return x >= minX && x <= maxX && y >= minY && y <= maxY && z >= minZ && z <= maxZ;
     }
 
-    public boolean overlaps(RegionBox other) {
+    public boolean overlaps(RegionSelection other) {
         return minX <= other.maxX && maxX >= other.minX && minY <= other.maxY && maxY >= other.minY && minZ <= other.maxZ && maxZ >= other.minZ;
     }
 }

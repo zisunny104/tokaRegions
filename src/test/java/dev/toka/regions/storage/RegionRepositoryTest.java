@@ -12,7 +12,7 @@ public class RegionRepositoryTest {
     @Rule public TemporaryFolder temporary = new TemporaryFolder();
 
     private static Region region() {
-        return new Region(UUID.randomUUID(), "town", Map.of("en-US", "Town"), "w", List.of(new RegionBox(0, 0, 0, 9, 9, 9)), Region.Protection.PROTECT,
+        return new Region(UUID.randomUUID(), "town", Map.of("en-US", "Town"), "w", List.of(new RegionSelection(0, 0, 0, 9, 9, 9)), Region.Protection.PROTECT,
                 new LandRules(true, true, 0.73, List.of(new TaxTier(5, 0.31, null), new TaxTier(20, 0.93, 17.73))),
                 new Region.Teleport(1.5, 2, 3.5, 90f, 0f));
     }
@@ -40,7 +40,7 @@ public class RegionRepositoryTest {
         try (var store = DocumentStore.open(new StoreConfig(Backend.JSON, temporary.newFolder().toPath(), 1))) {
             var repository = new RegionRepository(store);
             var a = region();
-            var b = new Region(UUID.randomUUID(), "other", Map.of(), "w", List.of(new RegionBox(5, 0, 0, 14, 9, 9)), null, null, null);
+            var b = new Region(UUID.randomUUID(), "other", Map.of(), "w", List.of(new RegionSelection(5, 0, 0, 14, 9, 9)), null, null, null);
             try { repository.saveRegions(List.of(a, b)); fail(); } catch (IllegalArgumentException expected) { }
             assertTrue(repository.loadRegions().all().isEmpty());
         }

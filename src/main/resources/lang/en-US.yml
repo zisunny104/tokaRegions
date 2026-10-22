@@ -1,0 +1,21 @@
+cmd:
+  denied: "§cYou may not use this command."
+  failed: "§c[Region] Could not finish: ${0}"
+  usage: "§e[Region] Wrong usage; see /region help."
+done: "§a[Region] Done."
+help:
+  read: "§e/region list [page] §7— list regions; §e/region info [name] §7— show a region (default: under your feet)"
+  shape: "§e/region set <name> [full] §7— create a region from the selection (full = all heights); §e/region add <name> [full] §7— add a selection to a region"
+  edit: "§e/region del <name> [confirm], rename <name> <new>, settp <name>, mode <name> <open|protect|lock>, land <name> <buy|flat> <on|off>, land <name> offer <0-1>, tax <name> add <more than> <rate> [outsider rate], tax <name> clear"
+  people: "§e/region affil <player> <region|none> §7— set affiliation; §e/region adjust <player> <rate> <reason> §7— personal tax adjustment; adjust <player> clear removes it"
+list:
+  header: "§b[Region] Page ${0}/${1}, ${2} total:"
+  row: "§7${0} §8(${1} / ${2})"
+info: "§bRegion: ${0}
+World: ${1}; protection: ${2}
+Land purchase: ${3}; flat pricing: ${4}; affiliation offer: ${5}; tax tiers: ${6}"
+del:
+  confirm: "§e[Region] About to delete ${0}; players affiliated with it will have none. Confirm with /region del ${0} confirm"
+selection:
+  first: "§aRegion selection, first point: ${0} (${1}, ${2}, ${3})"
+  second: "§aRegion selection, second point: ${0} (${1}, ${2}, ${3})"

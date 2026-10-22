@@ -11,7 +11,7 @@ public class PurchasePolicyTest {
             new TaxTier(5, 0.31, null), new TaxTier(7, 0.52, null), new TaxTier(13, 0.93, null), new TaxTier(20, 0.93, 17.73)));
 
     private static Region region(LandRules rules) {
-        return new Region(UUID.randomUUID(), "town", Map.of(), "w", List.of(new RegionBox(0, 0, 0, 99, 255, 99)), Region.Protection.OPEN, rules, null);
+        return new Region(UUID.randomUUID(), "town", Map.of(), "w", List.of(new RegionSelection(0, 0, 0, 99, 255, 99)), Region.Protection.OPEN, rules, null);
     }
 
     private static PurchasePolicy.Buyer buyer(int owned, boolean affiliated) { return new PurchasePolicy.Buyer(owned, affiliated, false, false, 0); }

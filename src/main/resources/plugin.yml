@@ -5,6 +5,9 @@ api: ["1.0.4"]
 load: POSTWORLD
 softdepend: [tokaProfiles, tokaEconomy, tokaLand]
 permissions:
+  tokaregions.use:
+    description: 查看區域資訊
+    default: true
   tokaregions.admin:
     description: 管理區域、稅務級距與個人稅率調整
     default: op

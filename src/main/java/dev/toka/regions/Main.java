@@ -1,22 +1,37 @@
 package dev.toka.regions;
 
+import cn.nukkit.command.CommandSender;
+import cn.nukkit.event.EventHandler;
+import cn.nukkit.event.Listener;
+import cn.nukkit.event.plugin.PluginEnableEvent;
+import cn.nukkit.Player;
 import cn.nukkit.plugin.PluginBase;
+import dev.toka.i18n.Messages;
+import dev.toka.regions.command.RegionCommand;
+import dev.toka.regions.link.LandProvider;
+import dev.toka.regions.link.ProfilesLink;
+import dev.toka.regions.model.Region;
 import dev.toka.regions.model.RegionIndex;
+import dev.toka.regions.model.TaxAdjustment;
 import dev.toka.regions.storage.RegionRepository;
 import dev.toka.storage.Backend;
 import dev.toka.storage.DocumentStore;
 import dev.toka.storage.StoreConfig;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Locale;
+import java.util.*;
 
-/** Switchboard for regions; the rules and storage live in the model, policy and storage packages. */
-public final class Main extends PluginBase {
+/** Switchboard: opens storage, hands the region rules to tokaLand and registers the command and selection tool. */
+public final class Main extends PluginBase implements Listener {
     private static volatile Main instance;
     private DocumentStore store;
     private RegionRepository repository;
+    private ProfilesLink profiles;
+    private SelectionTool selection;
+    private RegionCommand command;
+    private final Map<String, Messages> languages = new HashMap<>();
     private volatile RegionIndex regions = new RegionIndex(List.of());
+    private volatile List<TaxAdjustment> adjustments = List.of();
 
     @Override public void onEnable() {
         instance = this;
@@ -30,6 +45,15 @@ public final class Main extends PluginBase {
             store = DocumentStore.open(new StoreConfig(backend, directory, config.getInt("storage.schema-version", 1)));
             repository = new RegionRepository(store);
             regions = repository.loadRegions();
+            adjustments = repository.loadAdjustments();
+            profiles = new ProfilesLink(getServer());
+            var item = cn.nukkit.item.Item.fromString(config.getString("selection.tool", "294:0"));
+            selection = new SelectionTool(this, item);
+            getServer().getPluginManager().registerEvents(selection, this);
+            getServer().getPluginManager().registerEvents(this, this);
+            command = new RegionCommand(this);
+            getServer().getCommandMap().register("tokaRegions", command);
+            if (LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
             getLogger().info("區域資料載入完成，共 " + regions.all().size() + " 個；儲存格式：" + backend);
         } catch (Exception error) {
             getLogger().error("tokaRegions 未能載入；為避免以空資料覆蓋原資料，插件將停用。", error);
@@ -37,12 +61,40 @@ public final class Main extends PluginBase {
         }
     }
 
+    /** tokaLand may start after us or be reloaded; hand it the rules again whenever it comes up. */
+    @EventHandler public void onPluginEnabled(PluginEnableEvent event) {
+        if (event.getPlugin().getName().equals("tokaLand") && LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
+    }
+
     @Override public void onDisable() {
+        if (command != null) {
+            var commands = getServer().getCommandMap();
+            commands.getCommands().entrySet().removeIf(entry -> entry.getValue() == command);
+            command.unregister(commands);
+        }
         if (store != null) try { store.close(); } catch (IOException error) { getLogger().error("關閉區域儲存庫失敗。", error); }
         if (instance == this) instance = null;
     }
 
     public static Main instance() { return instance; }
     public RegionIndex regions() { return regions; }
-    public RegionRepository repository() { return repository; }
+    public ProfilesLink profiles() { return profiles; }
+    public SelectionTool selection() { return selection; }
+
+    /** Saves the whole region set (validated: no overlaps, unique names) and switches to it only after a verified read-back. */
+    public void saveRegions(Collection<Region> next) throws IOException { regions = repository.saveRegions(next); }
+
+    /** Sum of the player's personal tax adjustments that are still in force. */
+    public double adjustmentRate(UUID player, long now) {
+        return adjustments.stream().filter(a -> a.player().equals(player) && a.activeAt(now)).mapToDouble(TaxAdjustment::rate).sum();
+    }
+
+    public List<TaxAdjustment> adjustments() { return adjustments; }
+    public void saveAdjustments(Collection<TaxAdjustment> next) throws IOException { adjustments = repository.saveAdjustments(next); }
+
+    public String text(CommandSender sender, String key, Object... args) {
+        String tag = sender instanceof Player player ? player.getLocale().toLanguageTag() : getConfig().getString("language", "zh-TW");
+        String selected = tag.startsWith("en") ? "en-US" : "zh-TW";
+        return languages.computeIfAbsent(selected, t -> new Messages(getClass().getClassLoader(), getDataFolder().toPath(), t, line -> getLogger().warning(line))).text(key, args);
+    }
 }
