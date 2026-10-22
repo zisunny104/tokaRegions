@@ -12,3 +12,7 @@ selection:
   # /region set ... full 使用的高度範圍。
   full-min-y: 0
   full-max-y: 255
+protection:
+  # 是否由本插件執行各區域的保護模式（open／protect／lock）。待命＝false，確認 zero 的舊區域保護已停用後才改為 true。
+  # protect：管理員，以及已有領地者可建造；領地內改由領地自己的規則決定。lock：只有管理員。
+  enforce: false

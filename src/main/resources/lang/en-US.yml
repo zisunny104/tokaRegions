@@ -19,6 +19,8 @@ del:
 treasury:
   balance: "§b[Region] Account of ${0}: ${1}"
   noAccount: "§e[Region] ${0} has no account, or the economy is not ready."
+guard:
+  denied: "§e[Region] This region is protected; you cannot do that here."
 selection:
   first: "§aRegion selection, first point: ${0} (${1}, ${2}, ${3})"
   second: "§aRegion selection, second point: ${0} (${1}, ${2}, ${3})"

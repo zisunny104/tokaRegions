@@ -9,6 +9,7 @@ import cn.nukkit.plugin.PluginBase;
 import dev.toka.i18n.Messages;
 import dev.toka.regions.command.RegionCommand;
 import dev.toka.regions.link.EconomyLink;
+import dev.toka.regions.link.LandLink;
 import dev.toka.regions.link.LandProvider;
 import dev.toka.regions.link.ProfilesLink;
 import dev.toka.regions.model.Region;
@@ -31,6 +32,7 @@ public final class Main extends PluginBase implements Listener {
     private EconomyLink economy;
     private SelectionTool selection;
     private RegionCommand command;
+    private LandLink land;
     private final Map<String, Messages> languages = new HashMap<>();
     private volatile RegionIndex regions = new RegionIndex(List.of());
     private volatile List<TaxAdjustment> adjustments = List.of();
@@ -66,6 +68,13 @@ public final class Main extends PluginBase implements Listener {
             }
             if (LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
             ensureAccounts();
+            land = new LandLink(getServer());
+            if (config.getBoolean("protection.enforce", false)) {
+                getServer().getPluginManager().registerEvents(new RegionGuard(this, land), this);
+                getLogger().warning("區域保護已啟用：請確認 zero 的舊區域保護已停用，否則兩邊會同時攔截。");
+            } else {
+                getLogger().info("區域保護待命中：protection.enforce 為 false。");
+            }
             getLogger().info("區域資料載入完成，共 " + regions.all().size() + " 個；儲存格式：" + backend);
         } catch (Exception error) {
             getLogger().error("tokaRegions 未能載入；為避免以空資料覆蓋原資料，插件將停用。", error);
