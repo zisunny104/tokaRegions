@@ -10,7 +10,7 @@ import java.util.UUID;
  * The shape is the region's own and shares nothing with tokaLand's selections.
  */
 public record Region(UUID id, String name, Map<String, String> localizedNames, String world, List<RegionSelection> selections,
-                     Protection protection, LandRules land, Teleport teleport, Treasury treasury) {
+                     Protection protection, LandRules land, Teleport teleport, Treasury treasury, String tag) {
     public enum Protection { OPEN, PROTECT, LOCK }
 
     /**
@@ -33,6 +33,11 @@ public record Region(UUID id, String name, Map<String, String> localizedNames, S
         this(id, name, localizedNames, world, selections, protection, land, teleport, Treasury.NONE);
     }
 
+    public Region(UUID id, String name, Map<String, String> localizedNames, String world, List<RegionSelection> selections,
+                  Protection protection, LandRules land, Teleport teleport, Treasury treasury) {
+        this(id, name, localizedNames, world, selections, protection, land, teleport, treasury, "");
+    }
+
     public Region {
         Objects.requireNonNull(id, "id");
         if (name == null || name.isBlank()) throw new IllegalArgumentException("name is required");
@@ -43,6 +48,7 @@ public record Region(UUID id, String name, Map<String, String> localizedNames, S
         protection = protection == null ? Protection.OPEN : protection;
         land = land == null ? LandRules.closed() : land;
         treasury = treasury == null ? Treasury.NONE : treasury;
+        tag = tag == null ? "" : tag;
     }
 
     public boolean hasAccount() { return treasury != Treasury.NONE; }

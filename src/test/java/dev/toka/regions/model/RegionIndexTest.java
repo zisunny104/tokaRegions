@@ -69,4 +69,12 @@ public class RegionIndexTest {
     @Test public void aRegionStoredWithoutTheSettingHasNoAccount() {
         assertEquals(Region.Treasury.NONE, new Region(UUID.randomUUID(), "x", null, "w", List.of(new RegionSelection(0, 0, 0, 1, 1, 1)), null, null, null, null).treasury());
     }
+
+    @Test public void theTagDefaultsToNothingAndIsKept() {
+        var plain = new Region(UUID.randomUUID(), "x", null, "w", List.of(new RegionSelection(0, 0, 0, 1, 1, 1)), null, null, null);
+        assertEquals("", plain.tag());
+        var tagged = new Region(plain.id(), "x", null, "w", plain.selections(), null, null, null, Region.Treasury.OWN, "§a[和平村]");
+        assertEquals("§a[和平村]", tagged.tag());
+        assertEquals("", new Region(plain.id(), "x", null, "w", plain.selections(), null, null, null, Region.Treasury.OWN, null).tag());
+    }
 }

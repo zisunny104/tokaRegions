@@ -7,6 +7,7 @@ help:
   read: "§e/region list [頁] §7— 列出區域；§e/region info [名稱] §7— 查看區域（不填為腳下）"
   shape: "§e/region set <名稱> [full] §7— 以選區建立區域（full＝全高度）；§e/region add <名稱> [full] §7— 為區域追加選區"
   edit: "§e/region del <名稱> [confirm]、rename <名稱> <新名>、settp <名稱>、mode <名稱> <open|protect|lock>、land <名稱> <buy|flat> <on|off>、land <名稱> offer <0~1>、tax <名稱> add <超過幾塊> <稅率> [外人稅率]、tax <名稱> clear"
+  tag: "§e/region tag <名稱> [文字|clear] §7- §b設定歸屬此區域的玩家在名稱標籤上的標記，可用 & 代替色碼"
   people: "§e/region affil <玩家> <區域|none> §7— 設定歸屬；§e/region adjust <玩家> <稅率調整> <原因> §7— 個人稅率調整；adjust <玩家> clear 清除"
 list:
   header: "§b[區域] 第 ${0}/${1} 頁，共 ${2} 個："

@@ -69,6 +69,7 @@ public final class Main extends PluginBase implements Listener {
             if (LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
             ensureAccounts();
             land = new LandLink(getServer());
+            dev.toka.regions.link.DisplayLink.register(this);
             if (config.getBoolean("protection.enforce", false)) {
                 getServer().getPluginManager().registerEvents(new RegionGuard(this, land), this);
                 getLogger().warning("區域保護已啟用：請確認 zero 的舊區域保護已停用，否則兩邊會同時攔截。");
@@ -86,6 +87,7 @@ public final class Main extends PluginBase implements Listener {
     @EventHandler public void onPluginEnabled(PluginEnableEvent event) {
         if (event.getPlugin().getName().equals("tokaLand") && LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
         if (event.getPlugin().getName().equals("tokaEconomy")) ensureAccounts();
+        if (event.getPlugin().getName().equals("tokaDisplay")) dev.toka.regions.link.DisplayLink.register(this);
     }
 
     @Override public void onDisable() {

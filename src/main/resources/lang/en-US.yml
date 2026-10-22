@@ -7,6 +7,7 @@ help:
   read: "§e/region list [page] §7— list regions; §e/region info [name] §7— show a region (default: under your feet)"
   shape: "§e/region set <name> [full] §7— create a region from the selection (full = all heights); §e/region add <name> [full] §7— add a selection to a region"
   edit: "§e/region del <name> [confirm], rename <name> <new>, settp <name>, mode <name> <open|protect|lock>, land <name> <buy|flat> <on|off>, land <name> offer <0-1>, tax <name> add <more than> <rate> [outsider rate], tax <name> clear"
+  tag: "§e/region tag <name> [text|clear] §7- §bSet what the name tag shows for players affiliated with this region; & stands for colour codes"
   people: "§e/region affil <player> <region|none> §7— set affiliation; §e/region adjust <player> <rate> <reason> §7— personal tax adjustment; adjust <player> clear removes it"
 list:
   header: "§b[Region] Page ${0}/${1}, ${2} total:"

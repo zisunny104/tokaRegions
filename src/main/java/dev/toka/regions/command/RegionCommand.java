@@ -14,7 +14,7 @@ import java.util.function.UnaryOperator;
 
 /** /region: lookups for everyone, upkeep for administrators. Region data is small, so edits save in place on the server thread. */
 public final class RegionCommand extends Command {
-    private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "help");
+    private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "tag", "help");
     private final Main plugin;
 
     public RegionCommand(Main plugin) {
@@ -25,7 +25,7 @@ public final class RegionCommand extends Command {
         addCommandParameters("read", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"help", "list", "info"}), CommandParameter.newType("name", true, CommandParamType.STRING)});
         addCommandParameters("shape", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"set", "add"}), CommandParameter.newType("name", CommandParamType.STRING),
                 CommandParameter.newEnum("height", true, new String[]{"full"})});
-        addCommandParameters("edit", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"del", "rename", "settp", "mode", "land", "tax", "treasury"}),
+        addCommandParameters("edit", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"del", "rename", "settp", "mode", "land", "tax", "treasury", "tag"}),
                 CommandParameter.newType("name", CommandParamType.STRING), CommandParameter.newType("args", true, CommandParamType.RAWTEXT)});
         addCommandParameters("people", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"affil", "adjust"}),
                 CommandParameter.newType("player", CommandParamType.STRING), CommandParameter.newType("args", true, CommandParamType.RAWTEXT)});
@@ -101,10 +101,19 @@ public final class RegionCommand extends Command {
             case "land" -> change(sender, need(args, 1), r -> copy(r, r.name(), r.protection(), landRules(r.land(), need(args, 2), need(args, 3)), r.teleport(), r.selections()));
             case "tax" -> change(sender, need(args, 1), r -> copy(r, r.name(), r.protection(), taxRules(r.land(), args), r.teleport(), r.selections()));
             case "treasury" -> treasury(sender, args);
+            case "tag" -> change(sender, need(args, 1), r -> new Region(r.id(), r.name(), r.localizedNames(), r.world(), r.selections(), r.protection(), r.land(), r.teleport(), r.treasury(), tag(args)));
             case "affil" -> affiliate(sender, args);
             case "adjust" -> adjust(sender, args);
             default -> send(sender, "cmd.usage");
         }
+    }
+
+    /** Everything after the region name, joined; "clear" or nothing removes the tag. */
+    private static String tag(String[] args) {
+        if (args.length < 3 || args[2].equalsIgnoreCase("clear")) return "";
+        String text = String.join(" ", Arrays.copyOfRange(args, 2, args.length)).replace('&', '§');
+        if (text.length() > 64) throw new IllegalArgumentException("TAG_TOO_LONG");
+        return text;
     }
 
     private static String need(String[] args, int index) {
@@ -113,7 +122,7 @@ public final class RegionCommand extends Command {
     }
 
     private static Region copy(Region r, String name, Region.Protection protection, LandRules land, Region.Teleport tp, List<RegionSelection> parts) {
-        return new Region(r.id(), name, r.localizedNames(), r.world(), parts, protection, land, tp, r.treasury());
+        return new Region(r.id(), name, r.localizedNames(), r.world(), parts, protection, land, tp, r.treasury(), r.tag());
     }
 
     private static LandRules landRules(LandRules old, String setting, String value) {
@@ -173,7 +182,7 @@ public final class RegionCommand extends Command {
         switch (sub) {
             case "none", "own", "main" -> {
                 var mode = Region.Treasury.valueOf(sub.toUpperCase(Locale.ROOT));
-                change(sender, region.name(), r -> new Region(r.id(), r.name(), r.localizedNames(), r.world(), r.selections(), r.protection(), r.land(), r.teleport(), mode));
+                change(sender, region.name(), r -> new Region(r.id(), r.name(), r.localizedNames(), r.world(), r.selections(), r.protection(), r.land(), r.teleport(), mode, r.tag()));
                 plugin.ensureAccounts();
             }
             case "balance" -> {
