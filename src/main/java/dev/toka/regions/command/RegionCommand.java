@@ -29,7 +29,8 @@ public final class RegionCommand extends Command {
                 new HelpPages.Section("people", "tokaregions.admin", List.of("tag", "affil", "adjust", "adjustClear"))), plugin::text);
         setPermission("tokaregions.use;tokaregions.admin");
         getCommandParameters().clear();
-        addCommandParameters("read", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"list", "info"}), CommandParameter.newType("name", true, CommandParamType.STRING)});
+        addCommandParameters("list", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"list"}), CommandParameter.newType("page", true, CommandParamType.INT)});
+        addCommandParameters("info", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"info"}), CommandParameter.newType("name", true, CommandParamType.STRING)});
         addCommandParameters("help", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"help"}),
                 CommandParameter.newEnum("section", true, new String[]{"read", "shape", "edit", "treasury", "people"}), CommandParameter.newType("page", true, CommandParamType.INT)});
         addCommandParameters("shape", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"set", "add"}), CommandParameter.newType("name", CommandParamType.STRING),
@@ -105,7 +106,10 @@ public final class RegionCommand extends Command {
                 save(plugin.regions().all().stream().filter(r -> !r.id().equals(region.id())).toList());
                 send(sender, "done");
             }
-            case "rename" -> change(sender, need(args, 1), r -> copy(r, need(args, 2), r.protection(), r.land(), r.teleport(), r.selections()));
+            case "rename" -> {
+                if (RESERVED.contains(need(args, 2).toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME");
+                change(sender, need(args, 1), r -> copy(r, need(args, 2), r.protection(), r.land(), r.teleport(), r.selections()));
+            }
             case "settp" -> {
                 if (!(sender instanceof Player p)) throw new IllegalArgumentException("PLAYER_ONLY");
                 change(sender, need(args, 1), r -> {
