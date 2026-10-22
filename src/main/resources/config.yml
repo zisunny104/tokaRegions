@@ -3,6 +3,9 @@ storage:
   backend: SQLITE
   schema-version: 1
   directory: storage
+treasury:
+  # 區域帳戶使用的貨幣代碼（tokaEconomy 的 config）。
+  currency: money
 selection:
   # 管理員選區工具（Nukkit 物品名稱或 ID:damage），破壞方塊為第一點、點擊為第二點。
   tool: "294:0"

@@ -15,6 +15,7 @@ public final class RegionIndex {
             if (!names.add(region.name().toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("duplicate region name: " + region.name());
         }
         List<Region> all = List.copyOf(ids.values());
+        if (all.stream().filter(r -> r.treasury() == Region.Treasury.MAIN).count() > 1) throw new IllegalArgumentException("only one region can hold the main account");
         for (int i = 0; i < all.size(); i++)
             for (int j = i + 1; j < all.size(); j++)
                 if (all.get(i).overlaps(all.get(j))) throw new IllegalArgumentException("regions overlap: " + all.get(i).name() + ", " + all.get(j).name());
@@ -30,6 +31,16 @@ public final class RegionIndex {
 
     public Optional<Region> byName(String name) {
         return byId.values().stream().filter(r -> r.name().equalsIgnoreCase(name)).findFirst();
+    }
+
+    public Optional<Region> mainAccountRegion() {
+        return byId.values().stream().filter(r -> r.treasury() == Region.Treasury.MAIN).findFirst();
+    }
+
+    /** The account that receives payments for land in the region: its own, else the main one, else none. */
+    public Optional<UUID> accountFor(Region region) {
+        if (region.hasAccount()) return Optional.of(region.id());
+        return mainAccountRegion().map(Region::id);
     }
 
     public Collection<Region> all() { return byId.values(); }

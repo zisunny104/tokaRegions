@@ -8,6 +8,7 @@ import cn.nukkit.Player;
 import cn.nukkit.plugin.PluginBase;
 import dev.toka.i18n.Messages;
 import dev.toka.regions.command.RegionCommand;
+import dev.toka.regions.link.EconomyLink;
 import dev.toka.regions.link.LandProvider;
 import dev.toka.regions.link.ProfilesLink;
 import dev.toka.regions.model.Region;
@@ -27,6 +28,7 @@ public final class Main extends PluginBase implements Listener {
     private DocumentStore store;
     private RegionRepository repository;
     private ProfilesLink profiles;
+    private EconomyLink economy;
     private SelectionTool selection;
     private RegionCommand command;
     private final Map<String, Messages> languages = new HashMap<>();
@@ -47,6 +49,7 @@ public final class Main extends PluginBase implements Listener {
             regions = repository.loadRegions();
             adjustments = repository.loadAdjustments();
             profiles = new ProfilesLink(getServer());
+            economy = new EconomyLink(getServer(), config.getString("treasury.currency", "money"));
             var item = cn.nukkit.item.Item.fromString(config.getString("selection.tool", "294:0"));
             selection = new SelectionTool(this, item);
             getServer().getPluginManager().registerEvents(selection, this);
@@ -54,6 +57,7 @@ public final class Main extends PluginBase implements Listener {
             command = new RegionCommand(this);
             getServer().getCommandMap().register("tokaRegions", command);
             if (LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
+            ensureAccounts();
             getLogger().info("區域資料載入完成，共 " + regions.all().size() + " 個；儲存格式：" + backend);
         } catch (Exception error) {
             getLogger().error("tokaRegions 未能載入；為避免以空資料覆蓋原資料，插件將停用。", error);
@@ -64,6 +68,7 @@ public final class Main extends PluginBase implements Listener {
     /** tokaLand may start after us or be reloaded; hand it the rules again whenever it comes up. */
     @EventHandler public void onPluginEnabled(PluginEnableEvent event) {
         if (event.getPlugin().getName().equals("tokaLand") && LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
+        if (event.getPlugin().getName().equals("tokaEconomy")) ensureAccounts();
     }
 
     @Override public void onDisable() {
@@ -79,6 +84,14 @@ public final class Main extends PluginBase implements Listener {
     public static Main instance() { return instance; }
     public RegionIndex regions() { return regions; }
     public ProfilesLink profiles() { return profiles; }
+    public EconomyLink economy() { return economy; }
+
+    /** Makes sure every region that keeps money has its account; safe to repeat. */
+    public void ensureAccounts() {
+        for (Region region : regions.all())
+            if (region.hasAccount() && !economy.ensureAccount(region.id(), region.name()))
+                getLogger().warning("區域帳戶尚未建立（tokaEconomy 未就緒）：" + region.name());
+    }
     public SelectionTool selection() { return selection; }
 
     /** Saves the whole region set (validated: no overlaps, unique names) and switches to it only after a verified read-back. */

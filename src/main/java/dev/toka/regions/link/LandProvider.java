@@ -58,6 +58,7 @@ public final class LandProvider implements BiFunction<Player, String, String> {
                 reply.addProperty("status", "OK");
                 reply.addProperty("offer", adjustment.offer());
                 reply.addProperty("tax", adjustment.tax());
+                plugin.regions().accountFor(region).ifPresent(account -> reply.addProperty("beneficiary", account.toString()));
             }
             default -> throw new IllegalArgumentException("Unknown request");
         }

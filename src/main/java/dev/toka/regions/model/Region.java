@@ -10,8 +10,15 @@ import java.util.UUID;
  * The shape is the region's own and shares nothing with tokaLand's selections.
  */
 public record Region(UUID id, String name, Map<String, String> localizedNames, String world, List<RegionSelection> selections,
-                     Protection protection, LandRules land, Teleport teleport) {
+                     Protection protection, LandRules land, Teleport teleport, Treasury treasury) {
     public enum Protection { OPEN, PROTECT, LOCK }
+
+    /**
+     * Whether the region has a money account. The account's id is the region's id. NONE: payments for land here go to the
+     * main account. OWN: the region keeps what is paid here. MAIN: like OWN, and also receives for regions with no account
+     * (at most one region is MAIN).
+     */
+    public enum Treasury { NONE, OWN, MAIN }
 
     /** A point inside the region where players can be sent. */
     public record Teleport(double x, double y, double z, float yaw, float pitch) {
@@ -19,6 +26,11 @@ public record Region(UUID id, String name, Map<String, String> localizedNames, S
             if (!Double.isFinite(x) || !Double.isFinite(y) || !Double.isFinite(z) || !Float.isFinite(yaw) || !Float.isFinite(pitch))
                 throw new IllegalArgumentException("teleport must be finite");
         }
+    }
+
+    public Region(UUID id, String name, Map<String, String> localizedNames, String world, List<RegionSelection> selections,
+                  Protection protection, LandRules land, Teleport teleport) {
+        this(id, name, localizedNames, world, selections, protection, land, teleport, Treasury.NONE);
     }
 
     public Region {
@@ -30,7 +42,10 @@ public record Region(UUID id, String name, Map<String, String> localizedNames, S
         localizedNames = localizedNames == null ? Map.of() : Map.copyOf(localizedNames);
         protection = protection == null ? Protection.OPEN : protection;
         land = land == null ? LandRules.closed() : land;
+        treasury = treasury == null ? Treasury.NONE : treasury;
     }
+
+    public boolean hasAccount() { return treasury != Treasury.NONE; }
 
     public boolean contains(String worldName, int x, int y, int z) {
         return world.equals(worldName) && selections.stream().anyMatch(part -> part.contains(x, y, z));

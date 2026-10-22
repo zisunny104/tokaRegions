@@ -42,4 +42,31 @@ public class RegionIndexTest {
         assertEquals("town!", r.displayName("en-US"));
         assertEquals("town", r.displayName("zh-TW"));
     }
+
+    private static Region withTreasury(String name, int x, Region.Treasury treasury) {
+        return new Region(UUID.randomUUID(), name, Map.of(), "w", List.of(new RegionSelection(x, 0, 0, x + 5, 9, 9)), Region.Protection.OPEN, LandRules.closed(), null, treasury);
+    }
+
+    @Test public void paymentsGoToTheRegionsOwnAccountElseTheMainOne() {
+        var main = withTreasury("main", 0, Region.Treasury.MAIN);
+        var village = withTreasury("village", 20, Region.Treasury.OWN);
+        var plain = withTreasury("plain", 40, Region.Treasury.NONE);
+        var index = new RegionIndex(List.of(main, village, plain));
+        assertEquals(village.id(), index.accountFor(village).orElseThrow());
+        assertEquals(main.id(), index.accountFor(plain).orElseThrow());
+        assertEquals(main.id(), index.accountFor(main).orElseThrow());
+    }
+
+    @Test public void withoutAMainAccountAnAccountlessRegionHasNoBeneficiary() {
+        var plain = withTreasury("plain", 40, Region.Treasury.NONE);
+        assertTrue(new RegionIndex(List.of(plain)).accountFor(plain).isEmpty());
+    }
+
+    @Test(expected = IllegalArgumentException.class) public void onlyOneRegionCanBeMain() {
+        new RegionIndex(List.of(withTreasury("a", 0, Region.Treasury.MAIN), withTreasury("b", 20, Region.Treasury.MAIN)));
+    }
+
+    @Test public void aRegionStoredWithoutTheSettingHasNoAccount() {
+        assertEquals(Region.Treasury.NONE, new Region(UUID.randomUUID(), "x", null, "w", List.of(new RegionSelection(0, 0, 0, 1, 1, 1)), null, null, null, null).treasury());
+    }
 }
