@@ -82,6 +82,17 @@ public final class Main extends PluginBase implements Listener {
     }
 
     public static Main instance() { return instance; }
+
+    /**
+     * For tools such as the one-time treasury import: the account that receives payments for land at a point, as a UUID
+     * string, or null when no region or account applies. Safe to call from any thread (the region index is immutable).
+     */
+    public static String accountAt(String world, int x, int y, int z) {
+        Main main = instance;
+        if (main == null) return null;
+        RegionIndex index = main.regions;
+        return index.at(world, x, y, z).flatMap(index::accountFor).map(UUID::toString).orElse(null);
+    }
     public RegionIndex regions() { return regions; }
     public ProfilesLink profiles() { return profiles; }
     public EconomyLink economy() { return economy; }
