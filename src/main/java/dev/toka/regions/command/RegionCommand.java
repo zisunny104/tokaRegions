@@ -16,17 +16,38 @@ import java.util.function.UnaryOperator;
 public final class RegionCommand extends Command {
     private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "tag", "help");
     private final Main plugin;
+    private final HelpPages help;
 
     public RegionCommand(Main plugin) {
         super("region", "區域管理", "/region help");
         this.plugin = plugin;
+        help = new HelpPages("region", List.of(
+                new HelpPages.Section("read", null, List.of("list", "info")),
+                new HelpPages.Section("shape", "tokaregions.admin", List.of("set", "add")),
+                new HelpPages.Section("edit", "tokaregions.admin", List.of("del", "rename", "settp", "mode", "land", "landOffer", "tax", "taxClear")),
+                new HelpPages.Section("treasury", "tokaregions.admin", List.of("treasuryMode", "treasuryBalance", "treasuryPay", "treasuryMove")),
+                new HelpPages.Section("people", "tokaregions.admin", List.of("tag", "affil", "adjust", "adjustClear"))), plugin::text);
         setPermission("tokaregions.use;tokaregions.admin");
         getCommandParameters().clear();
-        addCommandParameters("read", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"help", "list", "info"}), CommandParameter.newType("name", true, CommandParamType.STRING)});
+        addCommandParameters("read", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"list", "info"}), CommandParameter.newType("name", true, CommandParamType.STRING)});
+        addCommandParameters("help", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"help"}),
+                CommandParameter.newEnum("section", true, new String[]{"read", "shape", "edit", "treasury", "people"}), CommandParameter.newType("page", true, CommandParamType.INT)});
         addCommandParameters("shape", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"set", "add"}), CommandParameter.newType("name", CommandParamType.STRING),
                 CommandParameter.newEnum("height", true, new String[]{"full"})});
-        addCommandParameters("edit", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"del", "rename", "settp", "mode", "land", "tax", "treasury", "tag"}),
+        addCommandParameters("edit", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"del", "rename", "settp"}),
                 CommandParameter.newType("name", CommandParamType.STRING), CommandParameter.newType("args", true, CommandParamType.RAWTEXT)});
+        addCommandParameters("mode", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"mode"}), CommandParameter.newType("name", CommandParamType.STRING),
+                CommandParameter.newEnum("value", new String[]{"open", "protect", "lock"})});
+        addCommandParameters("land", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"land"}), CommandParameter.newType("name", CommandParamType.STRING),
+                CommandParameter.newEnum("what", new String[]{"buy", "flat", "offer"}), CommandParameter.newType("value", CommandParamType.STRING)});
+        addCommandParameters("tax", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"tax"}), CommandParameter.newType("name", CommandParamType.STRING),
+                CommandParameter.newEnum("what", new String[]{"add", "clear"}), CommandParameter.newType("over", true, CommandParamType.INT),
+                CommandParameter.newType("rate", true, CommandParamType.FLOAT), CommandParameter.newType("outsider", true, CommandParamType.FLOAT)});
+        addCommandParameters("treasury", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"treasury"}), CommandParameter.newType("name", CommandParamType.STRING),
+                CommandParameter.newEnum("what", new String[]{"none", "own", "main", "balance", "pay", "move"}), CommandParameter.newType("target", true, CommandParamType.STRING),
+                CommandParameter.newType("amount", true, CommandParamType.INT)});
+        addCommandParameters("tag", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"tag"}), CommandParameter.newType("name", CommandParamType.STRING),
+                CommandParameter.newType("text", true, CommandParamType.RAWTEXT)});
         addCommandParameters("people", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"affil", "adjust"}),
                 CommandParameter.newType("player", CommandParamType.STRING), CommandParameter.newType("args", true, CommandParamType.RAWTEXT)});
     }
@@ -38,7 +59,7 @@ public final class RegionCommand extends Command {
         String action = args.length == 0 ? "help" : args[0].toLowerCase(Locale.ROOT);
         try {
             switch (action) {
-                case "help" -> help(sender);
+                case "help" -> help.show(sender, args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0]);
                 case "list" -> list(sender, args);
                 case "info" -> info(sender, args);
                 default -> {
@@ -50,11 +71,6 @@ public final class RegionCommand extends Command {
             send(sender, "cmd.failed", failure.getMessage());
         }
         return true;
-    }
-
-    private void help(CommandSender sender) {
-        send(sender, "help.read");
-        if (sender.hasPermission("tokaregions.admin")) for (String key : List.of("help.shape", "help.edit", "help.people")) send(sender, key);
     }
 
     private void list(CommandSender sender, String[] args) {
