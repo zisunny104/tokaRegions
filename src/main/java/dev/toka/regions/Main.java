@@ -95,6 +95,18 @@ public final class Main extends PluginBase implements Listener {
      * For tools such as the one-time treasury import: the account that receives payments for land at a point, as a UUID
      * string, or null when no region or account applies. Safe to call from any thread (the region index is immutable).
      */
+    /** The id (UUID string) of the region at a point, or null. Safe from any thread. */
+    public static String regionIdAt(String world, int x, int y, int z) {
+        Main main = instance;
+        return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.id().toString()).orElse(null);
+    }
+
+    /** The id (UUID string) of the region with this name, or null. */
+    public static String regionIdByName(String name) {
+        Main main = instance;
+        return main == null ? null : main.regions.byName(name).map(r -> r.id().toString()).orElse(null);
+    }
+
     public static String accountAt(String world, int x, int y, int z) {
         Main main = instance;
         if (main == null) return null;
