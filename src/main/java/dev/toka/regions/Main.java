@@ -268,10 +268,10 @@ public final class Main extends PluginBase implements Listener {
         return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.id().toString()).orElse(null);
     }
 
-    /** The name of the region at a point, or null. Safe from any thread. */
+    /** The name players read for the region at a point (in the server language), or null. Safe from any thread. */
     public static String regionNameAt(String world, int x, int y, int z) {
         Main main = instance;
-        return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.name()).orElse(null);
+        return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.displayName(main.getConfig().getString("language", "zh-TW"))).orElse(null);
     }
 
     /** The id (UUID string) of the region with this name, or null. */
