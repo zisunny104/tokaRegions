@@ -1,6 +1,6 @@
 name: tokaRegions
 main: dev.toka.regions.Main
-version: "0.1.16"
+version: "0.1.17"
 api: ["1.0.4"]
 load: POSTWORLD
 softdepend: [tokaProfiles, tokaEconomy, tokaLand]
