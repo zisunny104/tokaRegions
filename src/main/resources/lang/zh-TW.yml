@@ -31,6 +31,7 @@ help:
   treasuryBalance: "§e/region treasury <名稱> balance §7- §b查看帳戶餘額"
   treasuryPay: "§e/region treasury <名稱> pay <玩家> <金額> §7- §b從國庫付錢給玩家"
   treasuryMove: "§e/region treasury <名稱> move <目標區域> <金額> §7- §b在區域國庫之間轉帳"
+  color: "§e/region color <名稱> [顏色碼|clear] §7- §b設定區域名稱的顏色（例如 &c），聊天與傳送訊息會用這個顏色"
   tag: "§e/region tag <名稱> [文字|clear] §7- §b設定歸屬此區域的玩家在名稱標籤上的標記，可用 & 代替色碼"
   affil: "§e/region affil <玩家> <區域|none> §7- §b設定玩家的歸屬"
   adjust: "§e/region adjust <玩家> <稅率調整> <原因> §7- §b個人稅率調整"

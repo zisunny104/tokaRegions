@@ -14,7 +14,7 @@ import java.util.function.UnaryOperator;
 
 /** /region: lookups for everyone, upkeep for administrators. Region data is small, so edits save in place on the server thread. */
 public final class RegionCommand extends Command {
-    private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "tag", "help");
+    private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "tag", "color", "help");
     private final Main plugin;
     private final HelpPages help;
 
@@ -26,7 +26,7 @@ public final class RegionCommand extends Command {
                 new HelpPages.Section("shape", "tokaregions.admin", List.of("set", "add")),
                 new HelpPages.Section("edit", "tokaregions.admin", List.of("del", "rename", "settp", "mode", "land", "landOffer", "tax", "taxClear")),
                 new HelpPages.Section("treasury", "tokaregions.admin", List.of("treasuryMode", "treasuryBalance", "treasuryPay", "treasuryMove")),
-                new HelpPages.Section("people", "tokaregions.admin", List.of("tag", "affil", "adjust", "adjustClear"))), plugin::text);
+                new HelpPages.Section("people", "tokaregions.admin", List.of("tag", "color", "affil", "adjust", "adjustClear"))), plugin::text);
         setPermission("tokaregions.use;tokaregions.admin");
         getCommandParameters().clear();
         addCommandParameters("list", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"list"}), CommandParameter.newType("page", true, CommandParamType.INT)});
@@ -121,11 +121,20 @@ public final class RegionCommand extends Command {
             case "land" -> change(sender, need(args, 1), r -> copy(r, r.name(), r.protection(), landRules(r.land(), need(args, 2), need(args, 3)), r.teleport(), r.selections()));
             case "tax" -> change(sender, need(args, 1), r -> copy(r, r.name(), r.protection(), taxRules(r.land(), args), r.teleport(), r.selections()));
             case "treasury" -> treasury(sender, args);
-            case "tag" -> change(sender, need(args, 1), r -> new Region(r.id(), r.name(), r.localizedNames(), r.world(), r.selections(), r.protection(), r.land(), r.teleport(), r.treasury(), tag(args)));
+            case "tag" -> change(sender, need(args, 1), r -> new Region(r.id(), r.name(), r.localizedNames(), r.world(), r.selections(), r.protection(), r.land(), r.teleport(), r.treasury(), tag(args), r.color()));
+            case "color" -> change(sender, need(args, 1), r -> r.withColor(color(args)));
             case "affil" -> affiliate(sender, args);
             case "adjust" -> adjust(sender, args);
             default -> send(sender, "cmd.usage");
         }
+    }
+
+    /** One colour code, written with & or §; "clear" or nothing removes the colour. */
+    private static String color(String[] args) {
+        if (args.length < 3 || args[2].equalsIgnoreCase("clear")) return "";
+        String code = args[2].replace('&', '§');
+        if (!code.matches("§[0-9a-fk-or]")) throw new IllegalArgumentException("INVALID_COLOR");
+        return code;
     }
 
     /** Everything after the region name, joined; "clear" or nothing removes the tag. */
@@ -142,7 +151,7 @@ public final class RegionCommand extends Command {
     }
 
     private static Region copy(Region r, String name, Region.Protection protection, LandRules land, Region.Teleport tp, List<RegionSelection> parts) {
-        return new Region(r.id(), name, r.localizedNames(), r.world(), parts, protection, land, tp, r.treasury(), r.tag());
+        return new Region(r.id(), name, r.localizedNames(), r.world(), parts, protection, land, tp, r.treasury(), r.tag(), r.color());
     }
 
     private static LandRules landRules(LandRules old, String setting, String value) {
@@ -202,7 +211,7 @@ public final class RegionCommand extends Command {
         switch (sub) {
             case "none", "own", "main" -> {
                 var mode = Region.Treasury.valueOf(sub.toUpperCase(Locale.ROOT));
-                change(sender, region.name(), r -> new Region(r.id(), r.name(), r.localizedNames(), r.world(), r.selections(), r.protection(), r.land(), r.teleport(), mode, r.tag()));
+                change(sender, region.name(), r -> new Region(r.id(), r.name(), r.localizedNames(), r.world(), r.selections(), r.protection(), r.land(), r.teleport(), mode, r.tag(), r.color()));
                 plugin.ensureAccounts();
             }
             case "balance" -> {

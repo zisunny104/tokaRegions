@@ -221,11 +221,14 @@ public final class Main extends PluginBase implements Listener {
             boolean known = all.stream().anyMatch(r -> r.id().equals(region.id()) || r.name().equalsIgnoreCase(region.name()));
             if (known) {
                 skipped++;
-                String tag = region.tag() == null ? "" : region.tag();
+                // What the old data knew and this has not been given yet (a name tag, a colour) is filled in; nothing already set is changed.
                 for (int i = 0; i < all.size(); i++) {
                     Region have = all.get(i);
-                    if ((have.id().equals(region.id()) || have.name().equalsIgnoreCase(region.name())) && (have.tag() == null || have.tag().isEmpty()) && !tag.isEmpty()) {
-                        all.set(i, new Region(have.id(), have.name(), have.localizedNames(), have.world(), have.selections(), have.protection(), have.land(), have.teleport(), have.treasury(), tag));
+                    if (!have.id().equals(region.id()) && !have.name().equalsIgnoreCase(region.name())) continue;
+                    String tag = have.tag().isEmpty() ? region.tag() : have.tag();
+                    String color = have.color().isEmpty() ? region.color() : have.color();
+                    if (!tag.equals(have.tag()) || !color.equals(have.color())) {
+                        all.set(i, new Region(have.id(), have.name(), have.localizedNames(), have.world(), have.selections(), have.protection(), have.land(), have.teleport(), have.treasury(), tag, color));
                         tagged++;
                     }
                 }
@@ -270,6 +273,12 @@ public final class Main extends PluginBase implements Listener {
 
     /** The name players read for the region at a point (in the server language), or null. Safe from any thread. */
     public static String regionNameAt(String world, int x, int y, int z) {
+        Main main = instance;
+        return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.coloredName(main.getConfig().getString("language", "zh-TW"))).orElse(null);
+    }
+
+    /** The same name without its colour, for text that is not shown in the game (logs, Discord). */
+    public static String plainRegionNameAt(String world, int x, int y, int z) {
         Main main = instance;
         return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.displayName(main.getConfig().getString("language", "zh-TW"))).orElse(null);
     }

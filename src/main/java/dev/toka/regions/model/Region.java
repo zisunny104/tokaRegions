@@ -10,7 +10,7 @@ import java.util.UUID;
  * The shape is the region's own and shares nothing with tokaLand's selections.
  */
 public record Region(UUID id, String name, Map<String, String> localizedNames, String world, List<RegionSelection> selections,
-                     Protection protection, LandRules land, Teleport teleport, Treasury treasury, String tag) {
+                     Protection protection, LandRules land, Teleport teleport, Treasury treasury, String tag, String color) {
     public enum Protection { OPEN, PROTECT, LOCK }
 
     /**
@@ -49,7 +49,22 @@ public record Region(UUID id, String name, Map<String, String> localizedNames, S
         land = land == null ? LandRules.closed() : land;
         treasury = treasury == null ? Treasury.NONE : treasury;
         tag = tag == null ? "" : tag;
+        color = color == null ? "" : color;
+        if (!color.isEmpty() && !color.matches("§[0-9a-fk-or]")) throw new IllegalArgumentException("color must be one colour code");
     }
+
+    /** A region written without a colour. */
+    public Region(UUID id, String name, Map<String, String> localizedNames, String world, List<RegionSelection> selections,
+                  Protection protection, LandRules land, Teleport teleport, Treasury treasury, String tag) {
+        this(id, name, localizedNames, world, selections, protection, land, teleport, treasury, tag, "");
+    }
+
+    public Region withColor(String value) {
+        return new Region(id, name, localizedNames, world, selections, protection, land, teleport, treasury, tag, value);
+    }
+
+    /** The name players read, in the region's colour. */
+    public String coloredName(String languageTag) { return color + displayName(languageTag); }
 
     public boolean hasAccount() { return treasury != Treasury.NONE; }
 
