@@ -215,15 +215,26 @@ public final class Main extends PluginBase implements Listener {
         JsonObject root = JsonParser.parseString(json).getAsJsonObject();
         List<Region> fresh = new ArrayList<>();
         List<Region> all = new ArrayList<>(main.regions.all());
-        int skipped = 0;
+        int skipped = 0, tagged = 0;
         for (JsonElement item : root.getAsJsonArray("regions")) {
             Region region = GSON.fromJson(item, Region.class);
             boolean known = all.stream().anyMatch(r -> r.id().equals(region.id()) || r.name().equalsIgnoreCase(region.name()));
-            if (known) { skipped++; continue; }
+            if (known) {
+                skipped++;
+                String tag = region.tag() == null ? "" : region.tag();
+                for (int i = 0; i < all.size(); i++) {
+                    Region have = all.get(i);
+                    if ((have.id().equals(region.id()) || have.name().equalsIgnoreCase(region.name())) && (have.tag() == null || have.tag().isEmpty()) && !tag.isEmpty()) {
+                        all.set(i, new Region(have.id(), have.name(), have.localizedNames(), have.world(), have.selections(), have.protection(), have.land(), have.teleport(), have.treasury(), tag));
+                        tagged++;
+                    }
+                }
+                continue;
+            }
             fresh.add(region);
             all.add(region);
         }
-        if (!fresh.isEmpty()) {
+        if (!fresh.isEmpty() || tagged > 0) {
             main.saveRegions(all);
             main.ensureAccounts();
         }
