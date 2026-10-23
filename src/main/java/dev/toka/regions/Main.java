@@ -5,6 +5,7 @@ import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.Listener;
 import cn.nukkit.event.plugin.PluginEnableEvent;
 import cn.nukkit.Player;
+import cn.nukkit.plugin.Plugin;
 import cn.nukkit.plugin.PluginBase;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -61,6 +62,7 @@ public final class Main extends PluginBase implements Listener {
             adjustments = repository.loadAdjustments();
             repository.loadPending().forEach(p -> pendingAffiliations.put(p.player(), p.region()));
             profiles = new ProfilesLink(getServer());
+            getServer().getScheduler().scheduleTask(this, this::listenLegacy);
             economy = new EconomyLink(getServer(), config.getString("treasury.currency", "money"));
             var item = cn.nukkit.item.Item.fromString(config.getString("selection.tool", "294:0"));
             selection = new SelectionTool(this, item);
@@ -125,7 +127,35 @@ public final class Main extends PluginBase implements Listener {
         if (event.getPlugin().getName().equals("tokaLand") && LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
         if (event.getPlugin().getName().equals("tokaEconomy")) ensureAccounts();
         if (event.getPlugin().getName().equals("tokaDisplay")) dev.toka.regions.link.DisplayLink.register(this);
-        if (event.getPlugin().getName().equals("tokaProfiles")) getServer().getOnlinePlayers().values().forEach(this::applyPending);
+        if (event.getPlugin().getName().equals("tokaProfiles")) {
+            getServer().getOnlinePlayers().values().forEach(this::applyPending);
+            getServer().getScheduler().scheduleTask(this, this::listenLegacy);
+        }
+    }
+
+    private boolean listeningLegacy;
+
+    /** When tokaProfiles hands an old name to an account, the village the old record named becomes that account's affiliation. */
+    private void listenLegacy() {
+        Plugin profilesPlugin = getServer().getPluginManager().getPlugin("tokaProfiles");
+        if (profilesPlugin == null || !profilesPlugin.isEnabled()) return;
+        try {
+            profilesPlugin.getClass().getMethod("onLegacyResolved", java.util.function.BiConsumer.class).invoke(null, (java.util.function.BiConsumer<String, UUID>) (name, uuid) ->
+                    getServer().getScheduler().scheduleTask(this, () -> applyVillage(profilesPlugin, uuid)));
+        } catch (ReflectiveOperationException | LinkageError unavailable) {
+            getLogger().warning("無法連上 tokaProfiles 的舊名稱取回：" + unavailable.getClass().getSimpleName());
+        }
+    }
+
+    private void applyVillage(Plugin profilesPlugin, UUID uuid) {
+        try {
+            @SuppressWarnings("unchecked") var detail = (java.util.Map<String, String>) profilesPlugin.getClass().getMethod("legacyDetail", UUID.class).invoke(null, uuid);
+            String village = detail.getOrDefault("village", "");
+            if (village.isBlank() || profiles.affiliation(uuid).isPresent()) return;
+            regions.byName(village).ifPresent(region -> profiles.setAffiliation(uuid, region.id()));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
+            getLogger().warning("無法套用舊紀錄的村莊歸屬：" + unavailable.getClass().getSimpleName());
+        }
     }
 
     @Override public void onDisable() {
@@ -269,7 +299,7 @@ public final class Main extends PluginBase implements Listener {
     public void saveAdjustments(Collection<TaxAdjustment> next) throws IOException { adjustments = repository.saveAdjustments(next); }
 
     public String text(CommandSender sender, String key, Object... args) {
-        String tag = sender instanceof Player player ? player.getLocale().toLanguageTag() : getConfig().getString("language", "zh-TW");
+        String tag = sender instanceof Player player && player.getLocale() != null ? player.getLocale().toLanguageTag() : getConfig().getString("language", "zh-TW");
         String selected = tag.startsWith("en") ? "en-US" : "zh-TW";
         return languages.computeIfAbsent(selected, t -> new Messages(getClass().getClassLoader(), getDataFolder().toPath(), t, line -> getLogger().warning(line))).text(key, args);
     }
