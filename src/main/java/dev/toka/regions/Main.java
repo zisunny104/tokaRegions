@@ -9,9 +9,6 @@ import cn.nukkit.plugin.Plugin;
 import cn.nukkit.plugin.PluginBase;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import dev.toka.i18n.Messages;
 import dev.toka.regions.command.RegionCommand;
 import dev.toka.regions.link.EconomyLink;
@@ -204,97 +201,6 @@ public final class Main extends PluginBase implements Listener {
     }
 
     public static Main instance() { return instance; }
-
-    /**
-     * For the cutover tool, by reflection: region protection starts now and stays on after a restart. Called after zero's own
-     * region protection is switched off.
-     */
-    public static synchronized void activateProtection() throws IOException {
-        Main main = instance;
-        if (main == null) throw new IllegalStateException("tokaRegions unavailable");
-        ConfigEdit.setBoolean(main.getDataFolder().toPath().resolve("config.yml"), "protection", "enforce", true);
-        main.getConfig().set("protection.enforce", true);
-        if (main.guard == null) {
-            main.guard = new RegionGuard(main, main.land);
-            main.getServer().getPluginManager().registerEvents(main.guard, main);
-        }
-    }
-
-    /** Undoes {@link #activateProtection()}. */
-    public static synchronized void deactivateProtection() throws IOException {
-        Main main = instance;
-        if (main == null) throw new IllegalStateException("tokaRegions unavailable");
-        ConfigEdit.setBoolean(main.getDataFolder().toPath().resolve("config.yml"), "protection", "enforce", false);
-        main.getConfig().set("protection.enforce", false);
-        if (main.guard != null) {
-            cn.nukkit.event.HandlerList.unregisterAll(main.guard);
-            main.guard = null;
-        }
-        main.getLogger().info("區域保護已停用（protection.enforce: false）。");
-    }
-
-    /** Whether region protection is running here. */
-    public static boolean protectionActive() {
-        Main main = instance;
-        return main != null && main.guard != null;
-    }
-
-    /**
-     * For the one-time hand-over from zero, by reflection and plain JSON: {"regions":[Region documents],"affiliations":[{"player","region"}]}.
-     * Adds only regions whose id and name are new and only sets an affiliation the player does not have, so a second run changes
-     * nothing. Returns a one-line report.
-     */
-    public static String importJson(String json) throws IOException {
-        Main main = instance;
-        if (main == null) throw new IllegalStateException("tokaRegions unavailable");
-        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
-        List<Region> fresh = new ArrayList<>();
-        List<Region> all = new ArrayList<>(main.regions.all());
-        int skipped = 0, tagged = 0;
-        for (JsonElement item : root.getAsJsonArray("regions")) {
-            Region region = GSON.fromJson(item, Region.class);
-            boolean known = all.stream().anyMatch(r -> r.id().equals(region.id()) || r.name().equalsIgnoreCase(region.name()));
-            if (known) {
-                skipped++;
-                // What the old data knew and this has not been given yet (a name tag, a colour) is filled in; nothing already set is changed.
-                for (int i = 0; i < all.size(); i++) {
-                    Region have = all.get(i);
-                    if (!have.id().equals(region.id()) && !have.name().equalsIgnoreCase(region.name())) continue;
-                    String tag = have.tag().isEmpty() ? region.tag() : have.tag();
-                    String color = have.color().isEmpty() ? region.color() : have.color();
-                    if (!tag.equals(have.tag()) || !color.equals(have.color())) {
-                        all.set(i, new Region(have.id(), have.name(), have.localizedNames(), have.world(), have.selections(), have.protection(), have.land(), have.teleport(), have.treasury(), tag, color));
-                        tagged++;
-                    }
-                }
-                continue;
-            }
-            fresh.add(region);
-            all.add(region);
-        }
-        if (!fresh.isEmpty() || tagged > 0) {
-            main.saveRegions(all);
-            main.ensureAccounts();
-        }
-        int requested = 0, kept = 0;
-        List<java.util.concurrent.CompletableFuture<Void>> pending = new ArrayList<>();
-        List<RegionRepository.Pending> order = new ArrayList<>();
-        for (JsonElement item : root.getAsJsonArray("affiliations")) {
-            JsonObject row = item.getAsJsonObject();
-            UUID player = UUID.fromString(row.get("player").getAsString()), region = UUID.fromString(row.get("region").getAsString());
-            if (main.profiles.affiliation(player).isPresent()) { kept++; continue; }
-            pending.add(main.profiles.setAffiliation(player, region));
-            order.add(new RegionRepository.Pending(player, region));
-            requested++;
-        }
-        int waiting = 0;
-        for (int i = 0; i < pending.size(); i++) {
-            try { pending.get(i).get(60, java.util.concurrent.TimeUnit.SECONDS); }
-            catch (Exception noProfileYet) { main.pendingAffiliations.put(order.get(i).player(), order.get(i).region()); waiting++; }
-        }
-        if (waiting > 0) main.savePending();
-        return "regions added " + fresh.size() + ", already there " + skipped + "; affiliations set " + (requested - waiting) + ", kept " + kept + ", waiting for the player's profile " + waiting;
-    }
 
     /**
      * For tools such as the one-time treasury import: the account that receives payments for land at a point, as a UUID
