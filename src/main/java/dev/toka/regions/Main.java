@@ -39,6 +39,8 @@ public final class Main extends PluginBase implements Listener {
     private SelectionTool selection;
     private RegionCommand command;
     private RegionGuard guard;
+    /** Memberships waiting for the player's profile to exist (player to region). */
+    private final Map<UUID, UUID> pendingAffiliations = new java.util.concurrent.ConcurrentHashMap<>();
     private LandLink land;
     private final Map<String, Messages> languages = new HashMap<>();
     private volatile RegionIndex regions = new RegionIndex(List.of());
@@ -57,6 +59,7 @@ public final class Main extends PluginBase implements Listener {
             repository = new RegionRepository(store);
             regions = repository.loadRegions();
             adjustments = repository.loadAdjustments();
+            repository.loadPending().forEach(p -> pendingAffiliations.put(p.player(), p.region()));
             profiles = new ProfilesLink(getServer());
             economy = new EconomyLink(getServer(), config.getString("treasury.currency", "money"));
             var item = cn.nukkit.item.Item.fromString(config.getString("selection.tool", "294:0"));
@@ -91,11 +94,41 @@ public final class Main extends PluginBase implements Listener {
         }
     }
 
+    private void savePending() {
+        try {
+            repository.savePending(pendingAffiliations.entrySet().stream().map(e -> new RegionRepository.Pending(e.getKey(), e.getValue())).toList());
+        } catch (IOException failure) {
+            getLogger().warning("無法儲存待處理的區域歸屬：" + failure);
+        }
+    }
+
+    /** Applies a waiting membership once the player's profile exists; a membership of a region that is gone, or one the player already has, is dropped. */
+    private void applyPending(Player player) {
+        UUID id = player.getUniqueId(), region = pendingAffiliations.get(id);
+        if (region == null) return;
+        if (profiles.affiliation(id).isPresent() || regions.all().stream().noneMatch(r -> r.id().equals(region))) {
+            pendingAffiliations.remove(id);
+            savePending();
+            return;
+        }
+        profiles.setAffiliation(id, region).whenComplete((done, failure) -> {
+            if (failure == null) getServer().getScheduler().scheduleTask(this, () -> { pendingAffiliations.remove(id); savePending(); });
+        });
+    }
+
+    /** Profiles creates the profile as the player joins, so the membership is tried a moment later. */
+    @EventHandler public void onJoin(cn.nukkit.event.player.PlayerJoinEvent event) {
+        if (pendingAffiliations.isEmpty()) return;
+        Player player = event.getPlayer();
+        getServer().getScheduler().scheduleDelayedTask(this, () -> { if (player.isOnline()) applyPending(player); }, 40);
+    }
+
     /** tokaLand may start after us or be reloaded; hand it the rules again whenever it comes up. */
     @EventHandler public void onPluginEnabled(PluginEnableEvent event) {
         if (event.getPlugin().getName().equals("tokaLand") && LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
         if (event.getPlugin().getName().equals("tokaEconomy")) ensureAccounts();
         if (event.getPlugin().getName().equals("tokaDisplay")) dev.toka.regions.link.DisplayLink.register(this);
+        if (event.getPlugin().getName().equals("tokaProfiles")) getServer().getOnlinePlayers().values().forEach(this::applyPending);
     }
 
     @Override public void onDisable() {
@@ -170,18 +203,22 @@ public final class Main extends PluginBase implements Listener {
         }
         int requested = 0, kept = 0;
         List<java.util.concurrent.CompletableFuture<Void>> pending = new ArrayList<>();
+        List<RegionRepository.Pending> order = new ArrayList<>();
         for (JsonElement item : root.getAsJsonArray("affiliations")) {
             JsonObject row = item.getAsJsonObject();
             UUID player = UUID.fromString(row.get("player").getAsString()), region = UUID.fromString(row.get("region").getAsString());
             if (main.profiles.affiliation(player).isPresent()) { kept++; continue; }
             pending.add(main.profiles.setAffiliation(player, region));
+            order.add(new RegionRepository.Pending(player, region));
             requested++;
         }
-        int failed = 0;
-        for (var work : pending) {
-            try { work.get(60, java.util.concurrent.TimeUnit.SECONDS); } catch (Exception failure) { failed++; }
+        int waiting = 0;
+        for (int i = 0; i < pending.size(); i++) {
+            try { pending.get(i).get(60, java.util.concurrent.TimeUnit.SECONDS); }
+            catch (Exception noProfileYet) { main.pendingAffiliations.put(order.get(i).player(), order.get(i).region()); waiting++; }
         }
-        return "regions added " + fresh.size() + ", already there " + skipped + "; affiliations set " + (requested - failed) + ", kept " + kept + ", failed " + failed;
+        if (waiting > 0) main.savePending();
+        return "regions added " + fresh.size() + ", already there " + skipped + "; affiliations set " + (requested - waiting) + ", kept " + kept + ", waiting for the player's profile " + waiting;
     }
 
     /**

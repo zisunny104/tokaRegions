@@ -14,6 +14,10 @@ public final class RegionRepository {
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
     private static final String REGIONS = "regions";
     private static final String ADJUSTMENTS = "tax-adjustments";
+    private static final String PENDING = "pending-affiliations";
+
+    /** A village membership that could not be recorded yet because the player has no profile; applied when the player joins. */
+    public record Pending(UUID player, UUID region) {}
     private final DocumentStore store;
 
     public RegionRepository(DocumentStore store) { this.store = Objects.requireNonNull(store); }
@@ -42,6 +46,14 @@ public final class RegionRepository {
         write(ADJUSTMENTS, "adjustments", list);
         if (!new HashSet<>(loadAdjustments()).equals(new HashSet<>(list))) throw new IOException("Adjustment readback mismatch");
         return list;
+    }
+
+    public List<Pending> loadPending() throws IOException {
+        return read(PENDING, "pending", new TypeToken<List<Pending>>() {});
+    }
+
+    public synchronized void savePending(Collection<Pending> items) throws IOException {
+        write(PENDING, "pending", new ArrayList<>(items));
     }
 
     private <T> List<T> read(String key, String field, TypeToken<List<T>> type) throws IOException {
