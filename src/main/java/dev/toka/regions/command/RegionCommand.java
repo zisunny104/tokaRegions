@@ -63,6 +63,7 @@ public final class RegionCommand extends Command {
                 case "help" -> help.show(sender, args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0]);
                 case "list" -> list(sender, args);
                 case "info" -> info(sender, args);
+                case "household" -> household(sender, args);
                 default -> {
                     if (!sender.hasPermission("tokaregions.admin")) { send(sender, "cmd.denied"); return true; }
                     admin(sender, action, args);
@@ -72,6 +73,24 @@ public final class RegionCommand extends Command {
             send(sender, "cmd.failed", failure.getMessage());
         }
         return true;
+    }
+
+    /** /region household [village]: where the player is registered, and to change it when the server lets players do so. */
+    private void household(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) throw new IllegalArgumentException("PLAYER_ONLY");
+        String language = player.getLocale() == null ? plugin.getConfig().getString("language", "zh-TW") : player.getLocale().toLanguageTag();
+        var villages = plugin.villages();
+        boolean change = plugin.getConfig().getBoolean("household.player-change", false);
+        if (args.length < 2) {
+            String current = plugin.profiles().affiliation(player.getUniqueId()).flatMap(plugin.regions()::get).map(r -> r.coloredName(language)).orElse(plugin.text(sender, "household.none"));
+            send(sender, "household.current", current);
+            if (change && !villages.isEmpty()) send(sender, "household.choices", villages.stream().map(Region::name).toList());
+            return;
+        }
+        if (!change) throw new IllegalArgumentException("HOUSEHOLD_LOCKED");
+        Region village = villages.stream().filter(r -> r.name().equalsIgnoreCase(args[1])).findFirst().orElseThrow(() -> new IllegalArgumentException("NOT_A_VILLAGE"));
+        plugin.profiles().setAffiliation(player.getUniqueId(), village.id()).whenComplete((ok, error) -> plugin.getServer().getScheduler().scheduleTask(plugin, () ->
+                send(sender, error == null ? "household.changed" : "cmd.failed", error == null ? village.coloredName(language) : String.valueOf(error.getCause() != null ? error.getCause().getMessage() : error.getMessage()))));
     }
 
     private void list(CommandSender sender, String[] args) {

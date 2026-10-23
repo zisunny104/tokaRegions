@@ -32,12 +32,18 @@ help:
   treasuryPay: "§e/region treasury <name> pay <player> <amount> §7- §bPay a player from the treasury"
   treasuryMove: "§e/region treasury <name> move <region> <amount> §7- §bMove money between treasuries"
   tag: "§e/region tag <name> [text|clear] §7- §bSet what the name tag shows for players affiliated with this region; & stands for colour codes"
+  household: "§e/region household [region] §7- §bShow where you are registered; change it when the server allows (household.player-change)"
   affil: "§e/region affil <player> <region|none> §7- §bSet a player's affiliation"
   adjust: "§e/region adjust <player> <rate> <reason> §7- §bPersonal tax adjustment"
   adjustClear: "§e/region adjust <player> clear §7- §bRemove the personal adjustment"
 list:
   header: "§b[Region] Page ${0}/${1}, ${2} total:"
   row: "§7${0} §8(${1} / ${2})"
+household:
+  none: "not registered"
+  current: "§7[Household]§r §bYou are registered in: §r${0}"
+  choices: "§7[Household]§r §7You can change to: §f${0} (/region household <name>)"
+  changed: "§7[Household]§r §aChanged to ${0}"
 affil:
   assigned: "§7[Village]§r §aYou are now a resident of ${0}§a!"
   assignedLog: "New player ${0} was given ${1}"

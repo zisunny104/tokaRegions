@@ -33,12 +33,20 @@ help:
   treasuryMove: "§e/region treasury <名稱> move <目標區域> <金額> §7- §b在區域國庫之間轉帳"
   color: "§e/region color <名稱> [顏色碼|clear] §7- §b設定區域名稱的顏色（例如 &c），聊天與傳送訊息會用這個顏色"
   tag: "§e/region tag <名稱> [文字|clear] §7- §b設定歸屬此區域的玩家在名稱標籤上的標記，可用 & 代替色碼"
+  household: "§e/region household [區域] §7- §b查看自己的戶籍；伺服器開放時可以改（household.player-change）"
   affil: "§e/region affil <玩家> <區域|none> §7- §b設定玩家的歸屬"
   adjust: "§e/region adjust <玩家> <稅率調整> <原因> §7- §b個人稅率調整"
   adjustClear: "§e/region adjust <玩家> clear §7- §b清除個人稅率調整"
 list:
   header: "§b[區域] 第 ${0}/${1} 頁，共 ${2} 個："
   row: "§7${0} §8(${1} / ${2})"
+household:
+  none: "尚未登記"
+  # ${0}＝區域名稱
+  current: "§7[戶籍]§r §b您登記在：§r${0}"
+  # ${0}＝可選的區域
+  choices: "§7[戶籍]§r §7可改成：§f${0}（/region household <名稱>）"
+  changed: "§7[戶籍]§r §a已改成 ${0}"
 affil:
   # ${0}＝區域名稱
   assigned: "§7[村落]§r §a您已成為 ${0} §a的居民!"

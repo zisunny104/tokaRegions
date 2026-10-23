@@ -115,25 +115,35 @@ public final class Main extends PluginBase implements Listener {
         });
     }
 
-    /** A player who is new is given one of the villages in {@code new-players.villages}, at random; without that setting nobody is. */
-    private void welcome(Player player) {
-        List<String> names = getConfig().getStringList("new-players.villages");
-        if (names.isEmpty() || !profiles.isNew(player.getUniqueId()) || profiles.affiliation(player.getUniqueId()).isPresent()) return;
-        List<Region> choices = names.stream().map(regions::byName).flatMap(Optional::stream).toList();
-        if (choices.isEmpty()) return;
+    /** The regions a player can be registered in (the household), from {@code household.villages}, in that order. */
+    public List<Region> villages() {
+        return getConfig().getStringList("household.villages").stream().map(regions::byName).flatMap(Optional::stream).toList();
+    }
+
+    /**
+     * Registers the player in one of the villages, at random. For whoever receives new players (tokaProfiles), by reflection; the result
+     * is the region's name, or a failure when the player already has a household or no village is set.
+     */
+    public static java.util.concurrent.CompletableFuture<String> assignHousehold(UUID player) {
+        Main main = instance;
+        if (main == null) return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException("tokaRegions unavailable"));
+        List<Region> choices = main.villages();
+        if (choices.isEmpty()) return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException("NO_VILLAGES"));
+        if (main.profiles.affiliation(player).isPresent()) return java.util.concurrent.CompletableFuture.failedFuture(new IllegalStateException("ALREADY_REGISTERED"));
         Region village = choices.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(choices.size()));
-        profiles.setAffiliation(player.getUniqueId(), village.id()).whenComplete((done, failure) -> {
-            if (failure != null) return;
-            String language = player.getLocale() == null ? getConfig().getString("language", "zh-TW") : player.getLocale().toLanguageTag();
-            getServer().getScheduler().scheduleTask(this, () -> player.sendMessage(text(player, "affil.assigned", village.coloredName(language))));
-            getLogger().info(text(getServer().getConsoleSender(), "affil.assignedLog", player.getName(), village.name()));
+        return main.profiles.setAffiliation(player, village.id()).thenApply(done -> {
+            main.getServer().getScheduler().scheduleTask(main, () -> {
+                Player online = main.getServer().getOnlinePlayers().get(player);
+                String language = online == null || online.getLocale() == null ? main.getConfig().getString("language", "zh-TW") : online.getLocale().toLanguageTag();
+                if (online != null) online.sendMessage(main.text(online, "affil.assigned", village.coloredName(language)));
+                main.getLogger().info(main.text(main.getServer().getConsoleSender(), "affil.assignedLog", online == null ? player : online.getName(), village.name()));
+            });
+            return village.name();
         });
     }
 
     /** Profiles creates the profile as the player joins, so the membership is tried a moment later. */
     @EventHandler public void onJoin(cn.nukkit.event.player.PlayerJoinEvent event) {
-        Player newcomer = event.getPlayer();
-        getServer().getScheduler().scheduleDelayedTask(this, () -> { if (newcomer.isOnline()) welcome(newcomer); }, 60);
         if (pendingAffiliations.isEmpty()) return;
         Player player = event.getPlayer();
         getServer().getScheduler().scheduleDelayedTask(this, () -> { if (player.isOnline()) applyPending(player); }, 40);

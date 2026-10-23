@@ -12,9 +12,11 @@ selection:
   # /region set ... full 使用的高度範圍。
   full-min-y: 0
   full-max-y: 255
-# 新玩家第一次進服時，從這些區域（寫區域名稱）隨機分到一個，成為它的居民。留空就不自動分配。
-new-players:
+# 戶籍：玩家可以登記的區域（寫區域名稱）。新玩家會由 tokaProfiles 從這裡隨機分到一個；留空就不自動分配。
+household:
   villages: []
+  # 玩家能不能自己用 /region household <區域> 改戶籍。false 時只有管理員能用 /region affil 改。
+  player-change: false
 
 protection:
   # 是否由本插件執行各區域的保護模式（open／protect／lock）。為 false 時待命。換手時由轉換工具在停用舊保護後自動改成 true。
