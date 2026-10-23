@@ -38,6 +38,9 @@ help:
 list:
   header: "§b[Region] Page ${0}/${1}, ${2} total:"
   row: "§7${0} §8(${1} / ${2})"
+affil:
+  assigned: "§7[Village]§r §aYou are now a resident of ${0}§a!"
+  assignedLog: "New player ${0} was given ${1}"
 info: "§bRegion: ${0}\nWorld: ${1}; protection: ${2}\nLand purchase: ${3}; flat pricing: ${4}; affiliation offer: ${5}; tax tiers: ${6}"
 del:
   confirm: "§e[Region] About to delete ${0}; players affiliated with it will have none. Confirm with /region del ${0} confirm"

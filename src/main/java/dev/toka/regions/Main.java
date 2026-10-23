@@ -115,8 +115,25 @@ public final class Main extends PluginBase implements Listener {
         });
     }
 
+    /** A player who is new is given one of the villages in {@code new-players.villages}, at random; without that setting nobody is. */
+    private void welcome(Player player) {
+        List<String> names = getConfig().getStringList("new-players.villages");
+        if (names.isEmpty() || !profiles.isNew(player.getUniqueId()) || profiles.affiliation(player.getUniqueId()).isPresent()) return;
+        List<Region> choices = names.stream().map(regions::byName).flatMap(Optional::stream).toList();
+        if (choices.isEmpty()) return;
+        Region village = choices.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(choices.size()));
+        profiles.setAffiliation(player.getUniqueId(), village.id()).whenComplete((done, failure) -> {
+            if (failure != null) return;
+            String language = player.getLocale() == null ? getConfig().getString("language", "zh-TW") : player.getLocale().toLanguageTag();
+            getServer().getScheduler().scheduleTask(this, () -> player.sendMessage(text(player, "affil.assigned", village.coloredName(language))));
+            getLogger().info(text(getServer().getConsoleSender(), "affil.assignedLog", player.getName(), village.name()));
+        });
+    }
+
     /** Profiles creates the profile as the player joins, so the membership is tried a moment later. */
     @EventHandler public void onJoin(cn.nukkit.event.player.PlayerJoinEvent event) {
+        Player newcomer = event.getPlayer();
+        getServer().getScheduler().scheduleDelayedTask(this, () -> { if (newcomer.isOnline()) welcome(newcomer); }, 60);
         if (pendingAffiliations.isEmpty()) return;
         Player player = event.getPlayer();
         getServer().getScheduler().scheduleDelayedTask(this, () -> { if (player.isOnline()) applyPending(player); }, 40);

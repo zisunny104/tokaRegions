@@ -32,6 +32,19 @@ public final class ProfilesLink {
         }
     }
 
+    /** Whether the player is new and still has to read the welcome pages (a profile made at the first login). */
+    public boolean isNew(UUID player) {
+        try {
+            Object repository = repository();
+            Object found = repository.getClass().getMethod("find", UUID.class).invoke(repository, player);
+            if (!(found instanceof Optional<?> profile) || profile.isEmpty()) return false;
+            Object preferences = profile.get().getClass().getMethod("preferences").invoke(profile.get());
+            return preferences instanceof java.util.Map<?, ?> map && "pending".equals(map.get("welcome"));
+        } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
+            return false;
+        }
+    }
+
     /** Sets the affiliation, or clears it when region is null. Fails if the player has no profile. */
     @SuppressWarnings("unchecked")
     public CompletableFuture<Void> setAffiliation(UUID player, UUID region) {
