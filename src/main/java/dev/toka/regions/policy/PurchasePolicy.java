@@ -13,7 +13,8 @@ public final class PurchasePolicy {
     /** Who is buying: how many claims they own, whether they are affiliated with the region, and their permissions and personal adjustment. */
     public record Buyer(int ownedCount, boolean affiliated, boolean taxExempt, boolean taxReduced, double rateAdjustment) {}
 
-    /** Both factors multiply the base price; the tax factor is 1 plus the rate, or 0 for an exempt buyer. */
+    /** Both factors multiply the base price; the tax factor is 1 plus the rate, so 1 (no tax) for an exempt buyer. */
+    // The land price (base price times the offer) and the tax are separate: exemption and relief touch only the tax, the offer only the price.
     public record Adjustment(double offer, double tax) {}
 
     /** Selecting land outside any region, or in a region that forbids purchases, is refused. */
@@ -23,7 +24,7 @@ public final class PurchasePolicy {
 
     public static Adjustment adjust(Region region, boolean flat, Buyer buyer) {
         double offer = buyer.affiliated() ? region.land().affiliatedOffer() : 1.0;
-        if (buyer.taxExempt()) return new Adjustment(offer, 0.0);
+        if (buyer.taxExempt()) return new Adjustment(offer, 1.0);
         double rate = 0.0;
         if (flat) {
             // Only flat land is taxed. The highest tier the buyer has passed decides the rate.

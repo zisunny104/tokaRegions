@@ -40,9 +40,11 @@ public class PurchasePolicyTest {
         assertEquals(1.0, PurchasePolicy.adjust(town, true, buyer(0, false)).offer(), 1e-9);
     }
 
-    @Test public void exemptBuyersPayNothingAndReducedBuyersPayHalfTheRate() {
+    @Test public void exemptBuyersPayNoTaxButStillThePriceAndReducedBuyersPayHalfTheRate() {
         var town = region(LEGACY);
-        assertEquals(0.0, PurchasePolicy.adjust(town, true, new PurchasePolicy.Buyer(30, false, true, false, 0)).tax(), 1e-9);
+        var exempt = PurchasePolicy.adjust(town, true, new PurchasePolicy.Buyer(30, true, true, false, 0));
+        assertEquals(1.0, exempt.tax(), 1e-9);
+        assertEquals(town.land().affiliatedOffer(), exempt.offer(), 1e-9);
         assertEquals(1.155, PurchasePolicy.adjust(town, true, new PurchasePolicy.Buyer(6, false, false, true, 0)).tax(), 1e-9);
     }
 
