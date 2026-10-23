@@ -330,6 +330,12 @@ public final class Main extends PluginBase implements Listener {
         return main == null ? null : main.regions.byName(name).map(r -> r.id().toString()).orElse(null);
     }
 
+    /** The account (UUID string) of the main treasury, or null when no region holds it or the regions are not loaded. */
+    public static String treasuryAccount() {
+        Main main = instance;
+        return main == null ? null : main.regions.mainAccountRegion().map(r -> r.id().toString()).orElse(null);
+    }
+
     public static String accountAt(String world, int x, int y, int z) {
         Main main = instance;
         if (main == null) return null;
