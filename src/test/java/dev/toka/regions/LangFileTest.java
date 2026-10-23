@@ -1,0 +1,32 @@
+package dev.toka.regions;
+
+import org.junit.Test;
+import org.yaml.snakeyaml.Yaml;
+import java.io.InputStream;
+import java.util.Map;
+import java.util.TreeSet;
+import static org.junit.Assert.*;
+
+public class LangFileTest {
+    private static TreeSet<String> keys(String file) throws Exception {
+        try (InputStream in = LangFileTest.class.getResourceAsStream("/lang/" + file)) {
+            TreeSet<String> out = new TreeSet<>();
+            flatten("", new Yaml().load(in), out);
+            return out;
+        }
+    }
+
+    private static void flatten(String prefix, Object node, TreeSet<String> out) {
+        if (node instanceof Map<?, ?> map) map.forEach((k, v) -> flatten(prefix.isEmpty() ? k.toString() : prefix + "." + k, v, out));
+        else out.add(prefix);
+    }
+
+    @Test public void bothLanguagesHaveTheSameKeys() throws Exception {
+        assertEquals(keys("zh-TW.yml"), keys("en-US.yml"));
+    }
+
+    @Test public void everyHelpLineIsInASection() throws Exception {
+        var keys = keys("zh-TW.yml");
+        for (String key : new String[]{"household", "color", "adjustClear", "menu", "reload"}) assertTrue(key, keys.contains("help." + key));
+    }
+}

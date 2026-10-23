@@ -30,8 +30,22 @@ public final class LandProvider implements BiFunction<Player, String, String> {
             return true;
         } catch (ReflectiveOperationException | LinkageError failure) {
             Throwable cause = failure.getCause() != null ? failure.getCause() : failure;
-            plugin.getLogger().warning("無法向 tokaLand 登錄區域規則（可能已有其他提供者）：" + cause.getMessage());
+            plugin.warn("log.landFailed", cause.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * Takes the rules back from tokaLand when this plugin goes down, so a reload can register again. Needs
+     * tokaLand to offer unregisterPurchasePolicy; an older tokaLand has none and keeps the old registration.
+     */
+    public static void unregister(Main plugin) {
+        Plugin land = plugin.getServer().getPluginManager().getPlugin("tokaLand");
+        if (land == null || !land.isEnabled()) return;
+        try {
+            land.getClass().getMethod("unregisterPurchasePolicy", String.class).invoke(null, plugin.getName());
+        } catch (ReflectiveOperationException | LinkageError absent) {
+            // Nothing to undo on a tokaLand without the method.
         }
     }
 

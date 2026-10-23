@@ -3,6 +3,7 @@ package dev.toka.regions.command;
 import cn.nukkit.Player;
 import cn.nukkit.command.Command;
 import cn.nukkit.command.CommandSender;
+import cn.nukkit.command.data.CommandEnum;
 import cn.nukkit.command.data.CommandParamType;
 import cn.nukkit.command.data.CommandParameter;
 import dev.toka.regions.Main;
@@ -14,7 +15,7 @@ import java.util.function.UnaryOperator;
 
 /** /region: lookups for everyone, upkeep for administrators. Region data is small, so edits save in place on the server thread. */
 public final class RegionCommand extends Command {
-    private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "tag", "color", "help");
+    private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "tag", "color", "help", "menu", "reload", "household");
     private final Main plugin;
     private final HelpPages help;
 
@@ -22,48 +23,91 @@ public final class RegionCommand extends Command {
         super("region", "區域管理", "/region help");
         this.plugin = plugin;
         help = new HelpPages("region", List.of(
-                new HelpPages.Section("read", null, List.of("list", "info")),
+                new HelpPages.Section("read", null, List.of("list", "info", "menu", "household")),
                 new HelpPages.Section("shape", "tokaregions.admin", List.of("set", "add")),
-                new HelpPages.Section("edit", "tokaregions.admin", List.of("del", "rename", "settp", "mode", "land", "landOffer", "tax", "taxClear")),
+                new HelpPages.Section("edit", "tokaregions.admin", List.of("del", "rename", "settp", "mode", "land", "landOffer", "tax", "taxClear", "reload")),
                 new HelpPages.Section("treasury", "tokaregions.admin", List.of("treasuryMode", "treasuryBalance", "treasuryPay", "treasuryMove")),
                 new HelpPages.Section("people", "tokaregions.admin", List.of("tag", "color", "affil", "adjust", "adjustClear"))), plugin::text);
         setPermission("tokaregions.use;tokaregions.admin");
+        refreshNames();
+    }
+
+    private static final String[] COLORS = {"clear", "&0", "&1", "&2", "&3", "&4", "&5", "&6", "&7", "&8", "&9", "&a", "&b", "&c", "&d", "&e", "&f"};
+
+    /** A region name argument: the names that exist now as a list to pick from; a plain text when there are none yet. */
+    private CommandParameter regionName(String id, boolean optional, String... extra) {
+        List<String> names = new ArrayList<>(plugin.regions().all().stream().map(Region::name).sorted(String.CASE_INSENSITIVE_ORDER).toList());
+        names.addAll(List.of(extra));
+        if (names.isEmpty()) return CommandParameter.newType(id, optional, CommandParamType.STRING);
+        return CommandParameter.newEnum(id, optional, new CommandEnum("TokaRegionsName" + extra.length, names));
+    }
+
+    private static CommandParameter word(String id, boolean optional, String enumName, String... values) {
+        return CommandParameter.newEnum(id, optional, new CommandEnum(enumName, values));
+    }
+
+    /** Builds the Tab overloads again; the region names are read from the regions that exist now. */
+    public void refreshNames() {
         getCommandParameters().clear();
-        addCommandParameters("list", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"list"}), CommandParameter.newType("page", true, CommandParamType.INT)});
-        addCommandParameters("info", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"info"}), CommandParameter.newType("name", true, CommandParamType.STRING)});
-        addCommandParameters("help", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"help"}),
-                CommandParameter.newEnum("section", true, new String[]{"read", "shape", "edit", "treasury", "people"}), CommandParameter.newType("page", true, CommandParamType.INT)});
-        addCommandParameters("shape", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"set", "add"}), CommandParameter.newType("name", CommandParamType.STRING),
-                CommandParameter.newEnum("height", true, new String[]{"full"})});
-        addCommandParameters("edit", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"del", "rename", "settp"}),
-                CommandParameter.newType("name", CommandParamType.STRING), CommandParameter.newType("args", true, CommandParamType.RAWTEXT)});
-        addCommandParameters("mode", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"mode"}), CommandParameter.newType("name", CommandParamType.STRING),
-                CommandParameter.newEnum("value", new String[]{"open", "protect", "lock"})});
-        addCommandParameters("land", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"land"}), CommandParameter.newType("name", CommandParamType.STRING),
-                CommandParameter.newEnum("what", new String[]{"buy", "flat", "offer"}), CommandParameter.newType("value", CommandParamType.STRING)});
-        addCommandParameters("tax", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"tax"}), CommandParameter.newType("name", CommandParamType.STRING),
-                CommandParameter.newEnum("what", new String[]{"add", "clear"}), CommandParameter.newType("over", true, CommandParamType.INT),
-                CommandParameter.newType("rate", true, CommandParamType.FLOAT), CommandParameter.newType("outsider", true, CommandParamType.FLOAT)});
-        addCommandParameters("treasury", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"treasury"}), CommandParameter.newType("name", CommandParamType.STRING),
-                CommandParameter.newEnum("what", new String[]{"none", "own", "main", "balance", "pay", "move"}), CommandParameter.newType("target", true, CommandParamType.STRING),
-                CommandParameter.newType("amount", true, CommandParamType.INT)});
-        addCommandParameters("tag", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"tag"}), CommandParameter.newType("name", CommandParamType.STRING),
+        addCommandParameters("list", new CommandParameter[]{word("action", false, "TokaRegionsList", "list"), CommandParameter.newType("page", true, CommandParamType.INT)});
+        addCommandParameters("info", new CommandParameter[]{word("action", false, "TokaRegionsInfo", "info"), regionName("name", true)});
+        addCommandParameters("menu", new CommandParameter[]{word("action", false, "TokaRegionsMenu", "menu")});
+        addCommandParameters("reload", new CommandParameter[]{word("action", false, "TokaRegionsReload", "reload")});
+        addCommandParameters("household", new CommandParameter[]{word("action", false, "TokaRegionsHousehold", "household"), regionName("region", true)});
+        addCommandParameters("help", new CommandParameter[]{word("action", false, "TokaRegionsHelp", "help"),
+                word("section", true, "TokaRegionsHelpSection", "read", "shape", "edit", "treasury", "people"), CommandParameter.newType("page", true, CommandParamType.INT)});
+        addCommandParameters("shape", new CommandParameter[]{word("action", false, "TokaRegionsShape", "set", "add"), CommandParameter.newType("name", CommandParamType.STRING),
+                word("height", true, "TokaRegionsFull", "full")});
+        addCommandParameters("del", new CommandParameter[]{word("action", false, "TokaRegionsDel", "del"), regionName("name", false), word("confirm", true, "TokaRegionsConfirm", "confirm")});
+        addCommandParameters("rename", new CommandParameter[]{word("action", false, "TokaRegionsRename", "rename"), regionName("name", false), CommandParameter.newType("new", CommandParamType.STRING)});
+        addCommandParameters("settp", new CommandParameter[]{word("action", false, "TokaRegionsSettp", "settp"), regionName("name", false)});
+        addCommandParameters("mode", new CommandParameter[]{word("action", false, "TokaRegionsMode", "mode"), regionName("name", false),
+                word("value", false, "TokaRegionsModeValue", "open", "protect", "lock")});
+        addCommandParameters("land", new CommandParameter[]{word("action", false, "TokaRegionsLand", "land"), regionName("name", false),
+                word("what", false, "TokaRegionsLandWhat", "buy", "flat", "offer"), CommandParameter.newType("value", CommandParamType.STRING)});
+        addCommandParameters("tax", new CommandParameter[]{word("action", false, "TokaRegionsTax", "tax"), regionName("name", false),
+                word("what", false, "TokaRegionsTaxAdd", "add"), CommandParameter.newType("over", CommandParamType.INT),
+                CommandParameter.newType("rate", CommandParamType.FLOAT), CommandParameter.newType("outsider", true, CommandParamType.FLOAT)});
+        addCommandParameters("taxClear", new CommandParameter[]{word("action", false, "TokaRegionsTax", "tax"), regionName("name", false),
+                word("what", false, "TokaRegionsTaxClear", "clear")});
+        addCommandParameters("treasury", new CommandParameter[]{word("action", false, "TokaRegionsTreasury", "treasury"), regionName("name", false),
+                word("what", false, "TokaRegionsTreasuryWhat", "none", "own", "main", "balance")});
+        addCommandParameters("treasuryPay", new CommandParameter[]{word("action", false, "TokaRegionsTreasury", "treasury"), regionName("name", false),
+                word("what", false, "TokaRegionsTreasuryPay", "pay"), CommandParameter.newType("player", CommandParamType.STRING), CommandParameter.newType("amount", CommandParamType.INT)});
+        addCommandParameters("treasuryMove", new CommandParameter[]{word("action", false, "TokaRegionsTreasury", "treasury"), regionName("name", false),
+                word("what", false, "TokaRegionsTreasuryMove", "move"), regionName("target", false), CommandParameter.newType("amount", CommandParamType.INT)});
+        addCommandParameters("tag", new CommandParameter[]{word("action", false, "TokaRegionsTag", "tag"), regionName("name", false),
                 CommandParameter.newType("text", true, CommandParamType.RAWTEXT)});
-        addCommandParameters("people", new CommandParameter[]{CommandParameter.newEnum("action", new String[]{"affil", "adjust"}),
-                CommandParameter.newType("player", CommandParamType.STRING), CommandParameter.newType("args", true, CommandParamType.RAWTEXT)});
+        addCommandParameters("color", new CommandParameter[]{word("action", false, "TokaRegionsColor", "color"), regionName("name", false),
+                word("code", true, "TokaRegionsColorCode", COLORS)});
+        addCommandParameters("affil", new CommandParameter[]{word("action", false, "TokaRegionsAffil", "affil"), CommandParameter.newType("player", CommandParamType.STRING),
+                regionName("region", false, "none")});
+        addCommandParameters("adjust", new CommandParameter[]{word("action", false, "TokaRegionsAdjust", "adjust"), CommandParameter.newType("player", CommandParamType.STRING),
+                CommandParameter.newType("rate", CommandParamType.FLOAT), CommandParameter.newType("reason", CommandParamType.RAWTEXT)});
+        addCommandParameters("adjustClear", new CommandParameter[]{word("action", false, "TokaRegionsAdjust", "adjust"), CommandParameter.newType("player", CommandParamType.STRING),
+                word("what", false, "TokaRegionsAdjustClear", "clear")});
     }
 
     private void send(CommandSender sender, String key, Object... args) { sender.sendMessage(plugin.text(sender, key, args)); }
 
     @Override public boolean execute(CommandSender sender, String label, String[] args) {
         if (!testPermissionSilent(sender)) { send(sender, "cmd.denied"); return true; }
-        String action = args.length == 0 ? "help" : args[0].toLowerCase(Locale.ROOT);
+        String action = args.length == 0 ? (sender instanceof Player ? "menu" : "help") : args[0].toLowerCase(Locale.ROOT);
         try {
             switch (action) {
                 case "help" -> help.show(sender, args.length > 1 ? Arrays.copyOfRange(args, 1, args.length) : new String[0]);
                 case "list" -> list(sender, args);
                 case "info" -> info(sender, args);
                 case "household" -> household(sender, args);
+                case "menu" -> {
+                    if (!(sender instanceof Player player)) throw new IllegalArgumentException("PLAYER_ONLY");
+                    plugin.windows().open(player);
+                }
+                case "reload" -> {
+                    if (!sender.hasPermission("tokaregions.admin")) { send(sender, "cmd.denied"); return true; }
+                    plugin.reloadSettings();
+                    send(sender, "reload.done");
+                }
                 default -> {
                     if (!sender.hasPermission("tokaregions.admin")) { send(sender, "cmd.denied"); return true; }
                     admin(sender, action, args);
@@ -251,7 +295,7 @@ public final class RegionCommand extends Command {
 
     private void transfer(CommandSender sender, UUID from, UUID to, long amount) {
         if (amount <= 0) throw new IllegalArgumentException("AMOUNT");
-        plugin.getLogger().info("國庫轉帳：" + sender.getName() + " " + from + " -> " + to + " " + amount);
+        plugin.info("log.transfer", sender.getName(), from, to, amount);
         // A fresh operation id per command run: pressing enter twice moves money twice, but a retry of one run cannot.
         plugin.economy().transfer(from, to, amount, "treasury:" + UUID.randomUUID()).whenComplete((status, error) ->
                 plugin.getServer().getScheduler().scheduleTask(plugin, () -> {

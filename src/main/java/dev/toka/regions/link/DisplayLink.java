@@ -23,7 +23,19 @@ public final class DisplayLink {
                     .flatMap(regions.regions()::get).map(region -> region.tag()).orElse("");
             api.getMethod("registerNameTagPart", String.class, String.class, BiFunction.class).invoke(null, regions.getName(), "affiliation", part);
         } catch (ReflectiveOperationException | LinkageError older) {
-            regions.getLogger().warning("tokaDisplay 不支援名稱標籤片段（需要 0.4.0 以上）；歸屬標籤不會顯示。");
+            regions.warn("log.displayOld");
+        }
+    }
+
+    /** Removes the name tag part, so a reload does not leave one that reads a dead plugin. */
+    public static void unregister(Main regions) {
+        Plugin display = regions.getServer().getPluginManager().getPlugin("tokaDisplay");
+        if (display == null || !display.isEnabled()) return;
+        try {
+            Class<?> api = Class.forName("dev.toka.display.Main", true, display.getClass().getClassLoader());
+            api.getMethod("unregisterNameTagParts", String.class).invoke(null, regions.getName());
+        } catch (ReflectiveOperationException | LinkageError older) {
+            // An older tokaDisplay has nothing to remove.
         }
     }
 }

@@ -43,7 +43,7 @@ public final class RegionGuard implements Listener {
             long now = System.currentTimeMillis();
             if (now - lastReport > 60_000) {
                 lastReport = now;
-                plugin.getLogger().warning("區域保護判斷出錯，這次放行：" + error);
+                plugin.warn("log.guardError", error);
             }
             return false;
         }

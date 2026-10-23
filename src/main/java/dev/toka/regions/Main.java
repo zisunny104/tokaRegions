@@ -1,6 +1,10 @@
 package dev.toka.regions;
 
+import cn.nukkit.command.Command;
 import cn.nukkit.command.CommandSender;
+import cn.nukkit.command.PluginCommand;
+import cn.nukkit.event.HandlerList;
+import cn.nukkit.item.Item;
 import cn.nukkit.event.EventHandler;
 import cn.nukkit.event.Listener;
 import cn.nukkit.event.plugin.PluginEnableEvent;
@@ -13,7 +17,9 @@ import dev.toka.i18n.Messages;
 import dev.toka.regions.command.RegionCommand;
 import dev.toka.regions.link.EconomyLink;
 import dev.toka.regions.link.LandLink;
+import dev.toka.regions.link.DisplayLink;
 import dev.toka.regions.link.LandProvider;
+import dev.toka.regions.form.RegionWindow;
 import dev.toka.regions.link.ProfilesLink;
 import dev.toka.regions.model.Region;
 import dev.toka.regions.model.RegionIndex;
@@ -37,6 +43,7 @@ public final class Main extends PluginBase implements Listener {
     private SelectionTool selection;
     private RegionCommand command;
     private RegionGuard guard;
+    private RegionWindow windows;
     /** Memberships waiting for the player's profile to exist (player to region). */
     private final Map<UUID, UUID> pendingAffiliations = new java.util.concurrent.ConcurrentHashMap<>();
     private LandLink land;
@@ -60,41 +67,80 @@ public final class Main extends PluginBase implements Listener {
             repository.loadPending().forEach(p -> pendingAffiliations.put(p.player(), p.region()));
             profiles = new ProfilesLink(getServer());
             getServer().getScheduler().scheduleTask(this, this::listenLegacy);
-            economy = new EconomyLink(getServer(), config.getString("treasury.currency", "money"));
-            var item = cn.nukkit.item.Item.fromString(config.getString("selection.tool", "294:0"));
-            selection = new SelectionTool(this, item);
-            getServer().getPluginManager().registerEvents(selection, this);
+            land = new LandLink(getServer());
+            applyConfig();
             getServer().getPluginManager().registerEvents(this, this);
+            windows = new RegionWindow(this);
             command = new RegionCommand(this);
             var commands = getServer().getCommandMap();
             var existing = commands.getCommand("region");
             if (existing != null && existing != command) {
-                getLogger().warning("/region 已由其他插件註冊；請先停用該入口再重啟。此次不註冊替代指令。");
+                warn("log.commandTaken", ownerOf(existing));
                 command = null;
             } else if (!commands.register("tokaRegions", command) || commands.getCommand("region") != command) {
-                getLogger().error("無法註冊指令 /region；請檢查指令衝突。");
+                error("log.commandFailed");
                 command = null;
             }
-            if (LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
+            if (LandProvider.register(this)) info("log.landRegistered");
             ensureAccounts();
-            land = new LandLink(getServer());
-            dev.toka.regions.link.DisplayLink.register(this);
-            if (config.getBoolean("protection.enforce", true)) {
-                guard = new RegionGuard(this, land);
-                getServer().getPluginManager().registerEvents(guard, this);
-            }
-            getLogger().info("§b載入區域共 §a" + regions.all().size() + " §b個");
-        } catch (Exception error) {
-            getLogger().error("tokaRegions 未能載入；為避免以空資料覆蓋原資料，插件將停用。", error);
+            DisplayLink.register(this);
+            getServer().getPluginManager().registerEvents(windows, this);
+            refreshSuggestions();
+            info("log.loaded", regions.all().size());
+        } catch (Exception failure) {
+            getLogger().error(text(getServer().getConsoleSender(), "log.loadFailed"), failure);
             getServer().getPluginManager().disablePlugin(this);
         }
     }
+
+    /** Everything built from config.yml, so that a reload can rebuild it: the money link, the selection tool and the guard. */
+    private void applyConfig() {
+        var config = getConfig();
+        economy = new EconomyLink(getServer(), config.getString("treasury.currency", "money"));
+        if (selection != null) HandlerList.unregisterAll(selection);
+        selection = new SelectionTool(this, Item.fromString(config.getString("selection.tool", "294:0")));
+        getServer().getPluginManager().registerEvents(selection, this);
+        if (guard != null) HandlerList.unregisterAll(guard);
+        guard = null;
+        if (config.getBoolean("protection.enforce", true)) {
+            guard = new RegionGuard(this, land);
+            getServer().getPluginManager().registerEvents(guard, this);
+        }
+    }
+
+    /** /region reload: config, texts and what was built from them. Regions are read from storage only at start. */
+    public void reloadSettings() {
+        reloadConfig();
+        languages.clear();
+        applyConfig();
+        ensureAccounts();
+        refreshSuggestions();
+    }
+
+    /** Rebuilds the region names offered in Tab and sends the new list to everyone online. */
+    public void refreshSuggestions() {
+        if (command == null) return;
+        command.refreshNames();
+        getServer().getOnlinePlayers().values().forEach(Player::sendCommandData);
+    }
+
+    public RegionWindow windows() { return windows; }
+    public RegionCommand command() { return command; }
+
+    /** The plugin that owns a command, for the log when a name is taken. */
+    private static String ownerOf(Command taken) {
+        return taken instanceof PluginCommand<?> owned ? owned.getPlugin().getName() : taken.getClass().getName();
+    }
+
+    public void info(String key, Object... args) { getLogger().info(text(getServer().getConsoleSender(), key, args)); }
+    public void warn(String key, Object... args) { getLogger().warning(text(getServer().getConsoleSender(), key, args)); }
+    public void error(String key, Object... args) { getLogger().error(text(getServer().getConsoleSender(), key, args)); }
 
     private void savePending() {
         try {
             repository.savePending(pendingAffiliations.entrySet().stream().map(e -> new RegionRepository.Pending(e.getKey(), e.getValue())).toList());
         } catch (IOException failure) {
-            getLogger().warning("無法儲存待處理的區域歸屬：" + failure);
+            warn("log.pendingFailed", failure);
         }
     }
 
@@ -141,7 +187,7 @@ public final class Main extends PluginBase implements Listener {
                 Player online = main.getServer().getOnlinePlayers().get(player);
                 String language = online == null || online.getLocale() == null ? main.getConfig().getString("language", "zh-TW") : online.getLocale().toLanguageTag();
                 if (online != null) online.sendMessage(main.text(online, "affil.assigned", village.coloredName(language)));
-                main.getLogger().info(main.text(main.getServer().getConsoleSender(), "affil.assignedLog", online == null ? player : online.getName(), village.name()));
+                main.info("affil.assignedLog", online == null ? player : online.getName(), village.name());
             });
             return village.name();
         });
@@ -156,9 +202,9 @@ public final class Main extends PluginBase implements Listener {
 
     /** tokaLand may start after us or be reloaded; hand it the rules again whenever it comes up. */
     @EventHandler public void onPluginEnabled(PluginEnableEvent event) {
-        if (event.getPlugin().getName().equals("tokaLand") && LandProvider.register(this)) getLogger().info("已向 tokaLand 登錄區域規則。");
+        if (event.getPlugin().getName().equals("tokaLand") && LandProvider.register(this)) info("log.landRegistered");
         if (event.getPlugin().getName().equals("tokaEconomy")) ensureAccounts();
-        if (event.getPlugin().getName().equals("tokaDisplay")) dev.toka.regions.link.DisplayLink.register(this);
+        if (event.getPlugin().getName().equals("tokaDisplay")) DisplayLink.register(this);
         if (event.getPlugin().getName().equals("tokaProfiles")) {
             getServer().getOnlinePlayers().values().forEach(this::applyPending);
             getServer().getScheduler().scheduleTask(this, this::listenLegacy);
@@ -175,7 +221,7 @@ public final class Main extends PluginBase implements Listener {
             profilesPlugin.getClass().getMethod("onLegacyResolved", java.util.function.BiConsumer.class).invoke(null, (java.util.function.BiConsumer<String, UUID>) (name, uuid) ->
                     getServer().getScheduler().scheduleTask(this, () -> applyVillage(profilesPlugin, uuid)));
         } catch (ReflectiveOperationException | LinkageError unavailable) {
-            getLogger().warning("無法連上 tokaProfiles 的舊名稱取回：" + unavailable.getClass().getSimpleName());
+            warn("log.legacyUnavailable", unavailable.getClass().getSimpleName());
         }
     }
 
@@ -186,17 +232,20 @@ public final class Main extends PluginBase implements Listener {
             if (village.isBlank() || profiles.affiliation(uuid).isPresent()) return;
             regions.byName(village).ifPresent(region -> profiles.setAffiliation(uuid, region.id()));
         } catch (ReflectiveOperationException | RuntimeException | LinkageError unavailable) {
-            getLogger().warning("無法套用舊紀錄的村莊歸屬：" + unavailable.getClass().getSimpleName());
+            warn("log.villageUnavailable", unavailable.getClass().getSimpleName());
         }
     }
 
     @Override public void onDisable() {
+        getServer().getScheduler().cancelTask(this);
+        LandProvider.unregister(this);
+        DisplayLink.unregister(this);
         if (command != null) {
             var commands = getServer().getCommandMap();
             commands.getCommands().entrySet().removeIf(entry -> entry.getValue() == command);
             command.unregister(commands);
         }
-        if (store != null) try { store.close(); } catch (IOException error) { getLogger().error("關閉區域儲存庫失敗。", error); }
+        if (store != null) try { store.close(); } catch (IOException error) { getLogger().error(text(getServer().getConsoleSender(), "log.closeFailed"), error); }
         if (instance == this) instance = null;
     }
 
@@ -256,12 +305,15 @@ public final class Main extends PluginBase implements Listener {
     public void ensureAccounts() {
         for (Region region : regions.all())
             if (region.hasAccount() && !economy.ensureAccount(region.id(), region.name()))
-                getLogger().warning("區域帳戶尚未建立（tokaEconomy 未就緒）：" + region.name());
+                warn("log.accountMissing", region.name());
     }
     public SelectionTool selection() { return selection; }
 
     /** Saves the whole region set (validated: no overlaps, unique names) and switches to it only after a verified read-back. */
-    public void saveRegions(Collection<Region> next) throws IOException { regions = repository.saveRegions(next); }
+    public void saveRegions(Collection<Region> next) throws IOException {
+        regions = repository.saveRegions(next);
+        refreshSuggestions();
+    }
 
     /** Sum of the player's personal tax adjustments that are still in force. */
     public double adjustmentRate(UUID player, long now) {
