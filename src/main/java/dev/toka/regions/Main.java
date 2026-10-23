@@ -6,6 +6,11 @@ import cn.nukkit.event.Listener;
 import cn.nukkit.event.plugin.PluginEnableEvent;
 import cn.nukkit.Player;
 import cn.nukkit.plugin.PluginBase;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import dev.toka.i18n.Messages;
 import dev.toka.regions.command.RegionCommand;
 import dev.toka.regions.link.EconomyLink;
@@ -25,6 +30,7 @@ import java.util.*;
 
 /** Switchboard: opens storage, hands the region rules to tokaLand and registers the command and selection tool. */
 public final class Main extends PluginBase implements Listener {
+    private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().serializeNulls().create();
     private static volatile Main instance;
     private DocumentStore store;
     private RegionRepository repository;
@@ -32,6 +38,7 @@ public final class Main extends PluginBase implements Listener {
     private EconomyLink economy;
     private SelectionTool selection;
     private RegionCommand command;
+    private RegionGuard guard;
     private LandLink land;
     private final Map<String, Messages> languages = new HashMap<>();
     private volatile RegionIndex regions = new RegionIndex(List.of());
@@ -70,9 +77,10 @@ public final class Main extends PluginBase implements Listener {
             ensureAccounts();
             land = new LandLink(getServer());
             dev.toka.regions.link.DisplayLink.register(this);
-            if (config.getBoolean("protection.enforce", false)) {
-                getServer().getPluginManager().registerEvents(new RegionGuard(this, land), this);
-                getLogger().warning("區域保護已啟用：請確認 zero 的舊區域保護已停用，否則兩邊會同時攔截。");
+            if (config.getBoolean("protection.enforce", true)) {
+                guard = new RegionGuard(this, land);
+                getServer().getPluginManager().registerEvents(guard, this);
+                getLogger().info("區域保護已啟用。");
             } else {
                 getLogger().info("區域保護待命中：protection.enforce 為 false。");
             }
@@ -101,6 +109,77 @@ public final class Main extends PluginBase implements Listener {
     }
 
     public static Main instance() { return instance; }
+
+    /**
+     * For the cutover tool, by reflection: region protection starts now and stays on after a restart. Called after zero's own
+     * region protection is switched off.
+     */
+    public static synchronized void activateProtection() throws IOException {
+        Main main = instance;
+        if (main == null) throw new IllegalStateException("tokaRegions unavailable");
+        ConfigEdit.setBoolean(main.getDataFolder().toPath().resolve("config.yml"), "protection", "enforce", true);
+        main.getConfig().set("protection.enforce", true);
+        if (main.guard == null) {
+            main.guard = new RegionGuard(main, main.land);
+            main.getServer().getPluginManager().registerEvents(main.guard, main);
+        }
+        main.getLogger().info("區域保護已啟用（protection.enforce: true）。");
+    }
+
+    /** Undoes {@link #activateProtection()}. */
+    public static synchronized void deactivateProtection() throws IOException {
+        Main main = instance;
+        if (main == null) throw new IllegalStateException("tokaRegions unavailable");
+        ConfigEdit.setBoolean(main.getDataFolder().toPath().resolve("config.yml"), "protection", "enforce", false);
+        main.getConfig().set("protection.enforce", false);
+        if (main.guard != null) {
+            cn.nukkit.event.HandlerList.unregisterAll(main.guard);
+            main.guard = null;
+        }
+        main.getLogger().info("區域保護已停用（protection.enforce: false）。");
+    }
+
+    /** Whether region protection is running here. */
+    public static boolean protectionActive() {
+        Main main = instance;
+        return main != null && main.guard != null;
+    }
+
+    /**
+     * For the one-time hand-over from zero, by reflection and plain JSON: {"regions":[Region documents],"affiliations":[{"player","region"}]}.
+     * Adds only regions whose id and name are new and only sets an affiliation the player does not have, so a second run changes
+     * nothing. Returns a one-line report.
+     */
+    public static String importJson(String json) throws IOException {
+        Main main = instance;
+        if (main == null) throw new IllegalStateException("tokaRegions unavailable");
+        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+        List<Region> fresh = new ArrayList<>();
+        List<Region> all = new ArrayList<>(main.regions.all());
+        int skipped = 0;
+        for (JsonElement item : root.getAsJsonArray("regions")) {
+            Region region = GSON.fromJson(item, Region.class);
+            boolean known = all.stream().anyMatch(r -> r.id().equals(region.id()) || r.name().equalsIgnoreCase(region.name()));
+            if (known) { skipped++; continue; }
+            fresh.add(region);
+            all.add(region);
+        }
+        if (!fresh.isEmpty()) main.saveRegions(all);
+        int requested = 0, kept = 0;
+        List<java.util.concurrent.CompletableFuture<Void>> pending = new ArrayList<>();
+        for (JsonElement item : root.getAsJsonArray("affiliations")) {
+            JsonObject row = item.getAsJsonObject();
+            UUID player = UUID.fromString(row.get("player").getAsString()), region = UUID.fromString(row.get("region").getAsString());
+            if (main.profiles.affiliation(player).isPresent()) { kept++; continue; }
+            pending.add(main.profiles.setAffiliation(player, region));
+            requested++;
+        }
+        int failed = 0;
+        for (var work : pending) {
+            try { work.get(60, java.util.concurrent.TimeUnit.SECONDS); } catch (Exception failure) { failed++; }
+        }
+        return "regions added " + fresh.size() + ", already there " + skipped + "; affiliations set " + (requested - failed) + ", kept " + kept + ", failed " + failed;
+    }
 
     /**
      * For tools such as the one-time treasury import: the account that receives payments for land at a point, as a UUID
