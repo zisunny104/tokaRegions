@@ -312,6 +312,12 @@ public final class Main extends PluginBase implements Listener {
         return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.coloredName(main.getConfig().getString("language", "zh-TW"))).orElse(null);
     }
 
+    /** The name (the code, not the name players read) of the region at a point, or null. Safe from any thread. */
+    public static String regionCodeAt(String world, int x, int y, int z) {
+        Main main = instance;
+        return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.name()).orElse(null);
+    }
+
     /** The same name without its colour, for text that is not shown in the game (logs, Discord). */
     public static String plainRegionNameAt(String world, int x, int y, int z) {
         Main main = instance;
