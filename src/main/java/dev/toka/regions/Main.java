@@ -164,7 +164,10 @@ public final class Main extends PluginBase implements Listener {
             fresh.add(region);
             all.add(region);
         }
-        if (!fresh.isEmpty()) main.saveRegions(all);
+        if (!fresh.isEmpty()) {
+            main.saveRegions(all);
+            main.ensureAccounts();
+        }
         int requested = 0, kept = 0;
         List<java.util.concurrent.CompletableFuture<Void>> pending = new ArrayList<>();
         for (JsonElement item : root.getAsJsonArray("affiliations")) {
