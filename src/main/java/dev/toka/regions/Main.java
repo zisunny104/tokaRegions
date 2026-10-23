@@ -115,6 +115,14 @@ public final class Main extends PluginBase implements Listener {
         });
     }
 
+    /** The name of the region the player is registered in, in its colour; null when there is none. For the city pass, by reflection. */
+    public static String householdNameOf(UUID player) {
+        Main main = instance;
+        if (main == null) return null;
+        String language = main.getConfig().getString("language", "zh-TW");
+        return main.profiles.affiliation(player).flatMap(main.regions::get).map(r -> r.coloredName(language)).orElse(null);
+    }
+
     /** The regions a player can be registered in (the household), from {@code household.villages}, in that order. */
     public List<Region> villages() {
         return getConfig().getStringList("household.villages").stream().map(regions::byName).flatMap(Optional::stream).toList();
