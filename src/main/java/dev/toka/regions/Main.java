@@ -83,11 +83,8 @@ public final class Main extends PluginBase implements Listener {
             if (config.getBoolean("protection.enforce", true)) {
                 guard = new RegionGuard(this, land);
                 getServer().getPluginManager().registerEvents(guard, this);
-                getLogger().info("區域保護已啟用。");
-            } else {
-                getLogger().info("區域保護待命中：protection.enforce 為 false。");
             }
-            getLogger().info("區域資料載入完成，共 " + regions.all().size() + " 個；儲存格式：" + backend);
+            getLogger().info("§b載入區域共 §a" + regions.all().size() + " §b個");
         } catch (Exception error) {
             getLogger().error("tokaRegions 未能載入；為避免以空資料覆蓋原資料，插件將停用。", error);
             getServer().getPluginManager().disablePlugin(this);
@@ -156,7 +153,6 @@ public final class Main extends PluginBase implements Listener {
             main.guard = new RegionGuard(main, main.land);
             main.getServer().getPluginManager().registerEvents(main.guard, main);
         }
-        main.getLogger().info("區域保護已啟用（protection.enforce: true）。");
     }
 
     /** Undoes {@link #activateProtection()}. */
