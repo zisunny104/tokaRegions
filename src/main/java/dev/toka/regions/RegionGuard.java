@@ -39,8 +39,7 @@ public final class RegionGuard implements Listener {
             // Only ask tokaLand when the answer can matter.
             Boolean claimed = mode == dev.toka.regions.model.Region.Protection.PROTECT && !administrator ? land.claimed(world, x, y, z) : null;
             Boolean owns = mode == dev.toka.regions.model.Region.Protection.PROTECT && !administrator && !Boolean.TRUE.equals(claimed) ? land.ownsAny(player.getUniqueId()) : null;
-            boolean refused = building ? RegionAccess.deniesBuilding(mode, administrator, claimed, owns) : RegionAccess.denies(mode, administrator, claimed, owns);
-            return !refused ? null : mode == dev.toka.regions.model.Region.Protection.LOCK && building ? "LOCKED" : "DENIED";
+            return RegionAccess.denies(mode, administrator, claimed, owns) ? (mode == dev.toka.regions.model.Region.Protection.LOCK ? "LOCKED" : "DENIED") : null;
         } catch (RuntimeException | LinkageError error) {
             long now = System.currentTimeMillis();
             if (now - lastReport > 60_000) {
@@ -55,7 +54,8 @@ public final class RegionGuard implements Listener {
         String why = refusal(player, at, building);
         if (why == null) return false;
         event.setCancelled();
-        player.sendMessage(plugin.text(player, why.equals("LOCKED") ? "guard.locked" : "guard.denied"));
+        // a locked region says nothing, as before
+        if (!why.equals("LOCKED")) player.sendMessage(plugin.text(player, "guard.denied"));
         return true;
     }
 

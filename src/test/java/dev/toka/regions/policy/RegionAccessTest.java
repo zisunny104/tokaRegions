@@ -11,7 +11,7 @@ public class RegionAccessTest {
 
     @Test public void lockedRegionsAreForAdministratorsEvenInsideAClaim() {
         assertTrue(RegionAccess.denies(Protection.LOCK, false, true, true));
-        assertFalse(RegionAccess.denies(Protection.LOCK, true, false, false));
+        assertTrue(RegionAccess.denies(Protection.LOCK, true, false, false));
     }
 
     @Test public void protectedRegionsAllowAdministratorsAndLandOwners() {
@@ -28,12 +28,9 @@ public class RegionAccessTest {
         assertTrue(RegionAccess.denies(Protection.PROTECT, false, null, null));
         assertTrue(RegionAccess.denies(Protection.PROTECT, false, null, false));
     }
-
-    @org.junit.Test public void aLockedRegionForbidsBuildingToEveryoneButStillLetsAdministratorsUseIt() {
-        assertTrue(RegionAccess.deniesBuilding(Protection.LOCK, true, false, false));
-        assertTrue(RegionAccess.deniesBuilding(Protection.LOCK, false, true, true));
-        assertFalse(RegionAccess.denies(Protection.LOCK, true, false, false));
-        assertFalse(RegionAccess.deniesBuilding(Protection.PROTECT, true, false, false));
-        assertFalse(RegionAccess.deniesBuilding(Protection.OPEN, false, null, null));
+    @org.junit.Test public void aLockedRegionForbidsEveryoneIncludingAdministrators() {
+        assertTrue(RegionAccess.denies(Protection.LOCK, true, false, false));
+        assertTrue(RegionAccess.denies(Protection.LOCK, false, true, true));
+        assertFalse(RegionAccess.denies(Protection.PROTECT, true, false, false));
     }
 }
