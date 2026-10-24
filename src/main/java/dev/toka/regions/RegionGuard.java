@@ -34,7 +34,7 @@ public final class RegionGuard implements Listener {
             var region = plugin.regions().at(world, x, y, z);
             if (region.isEmpty()) return false;
             var mode = region.get().protection();
-            boolean administrator = player.hasPermission("tokaregions.admin");
+            boolean administrator = player.isOp() || player.hasPermission("tokaregions.admin") || player.hasPermission("toka.identity.admin");
             // Only ask tokaLand when the answer can matter.
             Boolean claimed = mode == dev.toka.regions.model.Region.Protection.PROTECT && !administrator ? land.claimed(world, x, y, z) : null;
             Boolean owns = mode == dev.toka.regions.model.Region.Protection.PROTECT && !administrator && !Boolean.TRUE.equals(claimed) ? land.ownsAny(player.getUniqueId()) : null;

@@ -50,7 +50,12 @@ household:
 affil:
   assigned: "§7[Village]§r §aYou are now a resident of ${0}§a!"
   assignedLog: "§bNew player §a${0} §bwas given §a${1}"
-info: "§bRegion: ${0}\nWorld: ${1}; protection: ${2}\nLand purchase: ${3}; flat pricing: ${4}; affiliation offer: ${5}; tax tiers: ${6}"
+info: "§bRegion §r${0}
+§bCode §a${1}§b  ID §a${2}
+§bOther names §r${3}§b  Short §a${4}
+§bWorld §a${5}§b  Protection §a${6}§b  Treasury §a${7}
+§bTeleport §a${8}§b  Parts §a${9}
+§bLand purchase §a${10}§b  Flat §a${11}§b  Affiliation offer §a${12}§b  Tax tiers §a${13}"
 del:
   confirm: "§e[Region] About to delete ${0}; players affiliated with it will have none. Confirm with /region del ${0} confirm"
 treasury:
@@ -137,3 +142,6 @@ log:
   transfer: "§bTreasury transfer §a${0} §b${1} -> ${2} §a${3}"
   displayOld: "§eThe name display plugin is too old (needs §a0.4.0 §eor newer); affiliation tags will not show"
   guardError: "§eRegion protection check failed, allowed this time: §a${0}"
+sidebar:
+  region: "§3[Region]${0}§r"
+  outside: "§3[Region]Outside-${0}§r"

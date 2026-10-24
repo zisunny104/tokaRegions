@@ -149,7 +149,12 @@ public final class RegionCommand extends Command {
     private void info(CommandSender sender, String[] args) {
         Region region = args.length > 1 ? find(args[1]) : here(sender);
         var land = region.land();
-        send(sender, "info", region.name(), region.world(), region.protection(), land.purchaseAllowed(), land.flatPricing(), land.affiliatedOffer(), land.taxTiers().size());
+        String shown = region.coloredName(plugin.getConfig().getString("language", "zh-TW"));
+        String others = region.localizedNames().isEmpty() ? "-" : region.localizedNames().entrySet().stream().map(e -> e.getKey() + " " + e.getValue()).collect(java.util.stream.Collectors.joining("、"));
+        String point = region.teleport() == null ? "-" : String.format("%.0f, %.0f, %.0f", region.teleport().x(), region.teleport().y(), region.teleport().z());
+        send(sender, "info", shown, region.name(), region.id(), others, region.tag().isEmpty() ? "-" : region.tag(),
+                region.world(), region.protection(), region.treasury(), point, region.selections().size(),
+                land.purchaseAllowed(), land.flatPricing(), land.affiliatedOffer(), land.taxTiers().size());
     }
 
     private Region here(CommandSender sender) {
