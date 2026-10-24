@@ -53,6 +53,7 @@ public final class Main extends PluginBase implements Listener {
 
     @Override public void onEnable() {
         instance = this;
+        getServer().getScheduler().scheduleDelayedTask(this, this::applyAllPending, 200);
         saveDefaultConfig();
         try {
             var config = getConfig();
@@ -170,6 +171,23 @@ public final class Main extends PluginBase implements Listener {
         });
     }
 
+    /** Gives everybody on the waiting list their region now: a player who already has a profile does not have to log in first. */
+    private void applyAllPending() {
+        if (pendingAffiliations.isEmpty()) return;
+        var done = new java.util.concurrent.atomic.AtomicInteger();
+        var work = new ArrayList<java.util.concurrent.CompletableFuture<Void>>();
+        for (var waiting : new java.util.HashMap<>(pendingAffiliations).entrySet()) {
+            UUID id = waiting.getKey(), region = waiting.getValue();
+            if (profiles.affiliation(id).isPresent() || regions.all().stream().noneMatch(r -> r.id().equals(region))) { pendingAffiliations.remove(id); continue; }
+            work.add(profiles.setAffiliation(id, region).handle((ok, failure) -> {
+                if (failure == null) { pendingAffiliations.remove(id); done.incrementAndGet(); }
+                return (Void) null;
+            }));
+        }
+        java.util.concurrent.CompletableFuture.allOf(work.toArray(new java.util.concurrent.CompletableFuture[0])).whenComplete((all, failure) ->
+                getServer().getScheduler().scheduleTask(this, () -> { savePending(); if (done.get() > 0) info("log.pendingApplied", done.get()); }));
+    }
+
     /** The name of the region the player is registered in, in its colour; null when there is none. For the city pass, by reflection. */
     public static String householdNameOf(UUID player) {
         Main main = instance;
@@ -219,6 +237,7 @@ public final class Main extends PluginBase implements Listener {
         if (event.getPlugin().getName().equals("tokaDisplay")) DisplayLink.register(this);
         if (event.getPlugin().getName().equals("tokaProfiles")) {
             getServer().getOnlinePlayers().values().forEach(this::applyPending);
+            getServer().getScheduler().scheduleDelayedTask(this, this::applyAllPending, 100);
             getServer().getScheduler().scheduleTask(this, this::listenLegacy);
         }
     }

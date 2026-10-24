@@ -146,6 +146,7 @@ ID：${2}（區域本身）
   outsideLabel: "所有區域以外的地方"
   outsideSaved: "§a[區域] 區域外保護已改為 ${0}。"
 log:
+  pendingApplied: "§b已替 §a${0} §b位玩家直接套用待處理的區域歸屬"
   commandTaken: "§b指令 §a/region §b已由插件 §a${0} §b註冊，此次不註冊替代指令"
   commandFailed: "§c無法註冊指令 §a/region§c，請檢查指令衝突"
   landRegistered: "§b已向 §atokaLand §b登錄區域規則"

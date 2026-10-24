@@ -142,6 +142,7 @@ Tax tiers: ${12}"
   outsideLabel: "Everywhere that is in no region"
   outsideSaved: "§a[Region] Protection outside regions is now ${0}."
 log:
+  pendingApplied: "§bApplied the waiting region membership of §a${0}§b players right away"
   commandTaken: "§bThe command §a/region §bis taken by the plugin §a${0}§b; no replacement registered"
   commandFailed: "§cCould not register the command §a/region§c; check for a command clash"
   landRegistered: "§bRegion rules registered with §atokaLand"
