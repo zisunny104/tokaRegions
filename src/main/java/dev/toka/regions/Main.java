@@ -174,9 +174,15 @@ public final class Main extends PluginBase implements Listener {
     /** Gives everybody on the waiting list their region now: a player who already has a profile does not have to log in first. */
     private void applyAllPending() {
         if (pendingAffiliations.isEmpty()) return;
-        var done = new java.util.concurrent.atomic.AtomicInteger();
+        var queue = new java.util.ArrayDeque<>(new java.util.HashMap<>(pendingAffiliations).entrySet());
+        applyBatch(queue, new java.util.concurrent.atomic.AtomicInteger());
+    }
+
+    /** Profiles writes through a short queue, so the waiting list is handed over in batches, each one finished before the next starts. */
+    private void applyBatch(java.util.ArrayDeque<Map.Entry<UUID, UUID>> queue, java.util.concurrent.atomic.AtomicInteger done) {
         var work = new ArrayList<java.util.concurrent.CompletableFuture<Void>>();
-        for (var waiting : new java.util.HashMap<>(pendingAffiliations).entrySet()) {
+        while (work.size() < 64 && !queue.isEmpty()) {
+            var waiting = queue.poll();
             UUID id = waiting.getKey(), region = waiting.getValue();
             if (profiles.affiliation(id).isPresent() || regions.all().stream().noneMatch(r -> r.id().equals(region))) { pendingAffiliations.remove(id); continue; }
             work.add(profiles.setAffiliation(id, region).handle((ok, failure) -> {
@@ -185,7 +191,12 @@ public final class Main extends PluginBase implements Listener {
             }));
         }
         java.util.concurrent.CompletableFuture.allOf(work.toArray(new java.util.concurrent.CompletableFuture[0])).whenComplete((all, failure) ->
-                getServer().getScheduler().scheduleTask(this, () -> { savePending(); if (done.get() > 0) info("log.pendingApplied", done.get()); }));
+                getServer().getScheduler().scheduleTask(this, () -> {
+                    if (!isEnabled()) return;
+                    if (!queue.isEmpty()) { applyBatch(queue, done); return; }
+                    savePending();
+                    if (done.get() > 0) info("log.pendingApplied", done.get());
+                }));
     }
 
     /** The name of the region the player is registered in, in its colour; null when there is none. For the city pass, by reflection. */
