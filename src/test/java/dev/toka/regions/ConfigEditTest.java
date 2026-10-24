@@ -17,4 +17,10 @@ public class ConfigEditTest {
         assertFalse(ConfigEdit.apply(lines, "protection", "enforce", true));
         assertEquals("  enforce: false", lines.get(3));
     }
+
+    @Test public void aWordValueChangesAndKeepsItsComment() {
+        List<String> lines = new ArrayList<>(List.of("protection:", "  enforce: true", "  outside: LOCK # default", "tail: 1"));
+        assertTrue(ConfigEdit.apply(lines, "protection", "outside", "OPEN", "[A-Za-z0-9_-]+"));
+        assertEquals("  outside: OPEN # default", lines.get(2));
+    }
 }

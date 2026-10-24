@@ -55,7 +55,7 @@ public final class RegionCommand extends Command {
         addCommandParameters("reload", new CommandParameter[]{word("action", false, "TokaRegionsReload", "reload")});
         addCommandParameters("household", new CommandParameter[]{word("action", false, "TokaRegionsHousehold", "household"), regionName("region", true)});
         addCommandParameters("help", new CommandParameter[]{word("action", false, "TokaRegionsHelp", "help"),
-                word("section", true, "TokaRegionsHelpSection", "read", "shape", "edit", "treasury", "people"), CommandParameter.newType("page", true, CommandParamType.INT)});
+                CommandParameter.newType("page", true, CommandParamType.INT)});
         addCommandParameters("shape", new CommandParameter[]{word("action", false, "TokaRegionsShape", "set", "add"), CommandParameter.newType("name", CommandParamType.STRING),
                 word("height", true, "TokaRegionsFull", "full")});
         addCommandParameters("del", new CommandParameter[]{word("action", false, "TokaRegionsDel", "del"), regionName("name", false), word("confirm", true, "TokaRegionsConfirm", "confirm")});
@@ -154,7 +154,7 @@ public final class RegionCommand extends Command {
         String point = region.teleport() == null ? "-" : String.format("%.0f, %.0f, %.0f", region.teleport().x(), region.teleport().y(), region.teleport().z());
         send(sender, "info", shown, region.name(), region.id(), others, region.tag().isEmpty() ? "-" : region.tag(),
                 region.world(), region.protection(), region.treasury(), point, region.selections().size(),
-                land.purchaseAllowed(), land.flatPricing(), land.affiliatedOffer(), land.taxTiers().size());
+                land.purchaseAllowed(), land.flatPricing(), land.affiliatedOffer(), land.taxTiers().size(), plugin.accountText(sender, region));
     }
 
     private Region here(CommandSender sender) {

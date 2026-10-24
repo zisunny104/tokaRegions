@@ -125,6 +125,18 @@ public final class Main extends PluginBase implements Listener {
     }
 
     public RegionWindow windows() { return windows; }
+
+    /** protection.outside: one line of config.yml is edited so its comments stay, then the settings are read again. */
+    public void setOutside(String mode) throws IOException {
+        ConfigEdit.setWord(getDataFolder().toPath().resolve("config.yml"), "protection", "outside", mode.toUpperCase(Locale.ROOT));
+        reloadSettings();
+    }
+
+    /** The treasury account of a region in words: its id and what it belongs to, or where the money goes when it has none. */
+    public String accountText(CommandSender sender, Region region) {
+        if (region.hasAccount()) return text(sender, "account.own", region.id(), region.name());
+        return regions.mainAccountRegion().map(main -> text(sender, "account.none", main.name())).orElse(text(sender, "account.noneAtAll"));
+    }
     public RegionCommand command() { return command; }
 
     /** The plugin that owns a command, for the log when a name is taken. */

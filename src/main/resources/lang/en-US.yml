@@ -4,17 +4,14 @@ cmd:
   usage: "§e[Region] Wrong usage; see /region help."
 done: "§a[Region] Done."
 help:
-  title: "§6=== §f§l${0} help§r §6==="
-  index: "§e/${0} help ${1} §7- §b${2} (${3})"
-  section: "§6--- §f${0}§r §7page ${1}/${2} §6---"
-  next: "§8Next page: /${0} help ${1} ${2}"
-  unknown: "§eNo help section \"${0}\"; type /${1} help."
+  title: "§6=== §f§l${0} help§r §7page ${1}/${2} §6==="
+  next: "§8Next page: /${0} help ${1}"
   sec:
-    read: "View"
-    shape: "Create and extend"
-    edit: "Edit a region"
-    treasury: "Treasury"
-    people: "Tags and affiliation"
+    read: "§bBasics: look at regions and the household"
+    shape: "§bCreate and extend (administrators)"
+    edit: "§bEdit a region (administrators)"
+    treasury: "§bTreasury (administrators)"
+    people: "§bTags and affiliation (administrators)"
   list: "§e/region list [page] §7- §bList regions"
   info: "§e/region info [name] §7- §bShow a region (default: under your feet)"
   set: "§e/region set <name> [full] §7- §bCreate a region from the selection (full = all heights)"
@@ -51,11 +48,16 @@ affil:
   assigned: "§7[Village]§r §aYou are now a resident of ${0}§a!"
   assignedLog: "§bNew player §a${0} §bwas given §a${1}"
 info: "§bRegion §r${0}
-§bCode §a${1}§b  ID §a${2}
-§bOther names §r${3}§b  Short §a${4}
+§bCode §a${1}§b  ID §a${2} §b(the region itself)
+§bOther names §r${3}§b  Short name §a${4}
 §bWorld §a${5}§b  Protection §a${6}§b  Treasury §a${7}
-§bTeleport §a${8}§b  Parts §a${9}
-§bLand purchase §a${10}§b  Flat §a${11}§b  Affiliation offer §a${12}§b  Tax tiers §a${13}"
+§bTreasury account §r${14}
+§bTeleport §a${8}§b  Area §a${9} §bblocks
+§bLand purchase §a${10}§b  Flat pricing §a${11}§b  Affiliation offer §a${12}§b  Tax tiers §a${13}"
+account:
+  none: "none; payments go to the main treasury ${0}"
+  noneAtAll: "none"
+  own: "${0} (belongs to the region ${1} itself)"
 del:
   confirm: "§e[Region] About to delete ${0}; players affiliated with it will have none. Confirm with /region del ${0} confirm"
 treasury:
@@ -97,18 +99,24 @@ ${1} / ${2}"
     main: "Main treasury"
   'on': "On"
   'off': "Off"
-  info: "World: ${0}
-Protection: ${1}
-Treasury: ${2}
-Land purchase: ${3}  Flat pricing: ${4}
-Affiliation offer: ${5}
-Tax tiers: ${6}"
+  info: "Name: ${0}
+Code: ${1}
+ID: ${2} (the region itself)
+Other names: ${3}
+Short name: ${4}
+World: ${5}
+Protection: ${6}
+Treasury: ${7}
+Treasury account: ${8}
+Land purchase: ${9}  Flat pricing: ${10}
+Affiliation offer: ${11}
+Tax tiers: ${12}"
   edit: "Edit"
   delete: "Delete"
   deleteTitle: "Delete ${0}"
   deleteBody: "Players affiliated with it will have none. This cannot be undone. Delete it?"
   deleteYes: "Delete"
-  deleteNo: "Cancel"
+  deleteNo: "§cCancel"
   editTitle: "Edit ${0}"
   editHint: "Only what you change is applied."
   editMode: "Protection mode"
@@ -127,6 +135,12 @@ Tax tiers: ${6}"
   editColor: "Name colour"
   colorNone: "None"
   noChange: "§e[Region] Nothing changed."
+  close: "§cClose"
+  cancel: "§cCancel"
+  outside: "Protection outside regions"
+  outsideTitle: "Protection outside regions"
+  outsideLabel: "Everywhere that is in no region"
+  outsideSaved: "§a[Region] Protection outside regions is now ${0}."
 log:
   commandTaken: "§bThe command §a/region §bis taken by the plugin §a${0}§b; no replacement registered"
   commandFailed: "§cCould not register the command §a/region§c; check for a command clash"

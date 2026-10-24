@@ -26,9 +26,23 @@ final class ConfigEdit {
         Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
 
+    /** Same for a one-word value such as LOCK; the word may not contain spaces. */
+    static void setWord(Path file, String section, String key, String value) throws IOException {
+        if (!value.matches("[A-Za-z0-9_-]+")) throw new IllegalArgumentException("value must be one word");
+        String text = Files.readString(file, StandardCharsets.UTF_8);
+        String eol = text.contains("\r\n") ? "\r\n" : "\n";
+        List<String> lines = new ArrayList<>(List.of(text.split("\r?\n", -1)));
+        if (!apply(lines, section, key, value, "[A-Za-z0-9_-]+")) throw new IOException("Cannot find " + section + "." + key + " in " + file.getFileName());
+        Path temporary = file.resolveSibling(file.getFileName() + ".pending");
+        Files.writeString(temporary, String.join(eol, lines), StandardCharsets.UTF_8);
+        Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+    }
+
     /** True when the line was found and changed. */
-    static boolean apply(List<String> lines, String section, String key, boolean value) {
-        Pattern entry = Pattern.compile("^(\\s+" + Pattern.quote(key) + ":\\s*)(true|false)\\b(.*)$");
+    static boolean apply(List<String> lines, String section, String key, boolean value) { return apply(lines, section, key, String.valueOf(value), "true|false"); }
+
+    static boolean apply(List<String> lines, String section, String key, String value, String old) {
+        Pattern entry = Pattern.compile("^(\\s+" + Pattern.quote(key) + ":\\s*)(" + old + ")\\b(.*)$");
         boolean inside = false;
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);

@@ -9,7 +9,7 @@ import cn.nukkit.form.element.ElementButton;
 import cn.nukkit.form.element.ElementButtonImageData;
 import cn.nukkit.form.element.ElementDropdown;
 import cn.nukkit.form.element.ElementInput;
-import cn.nukkit.form.element.ElementLabel;
+import cn.nukkit.form.element.ElementHeader;
 import cn.nukkit.form.element.ElementToggle;
 import cn.nukkit.form.response.FormResponseCustom;
 import cn.nukkit.form.response.FormResponseModal;
@@ -108,6 +108,10 @@ public final class RegionWindow implements Listener {
         actions.add(() -> search(player));
         buttons.add(button(t(player, "win.household"), "icon_best3"));
         actions.add(() -> household(player));
+        if (player.hasPermission("tokaregions.admin")) {
+            buttons.add(button(t(player, "win.outside"), "icon_setting"));
+            actions.add(() -> outside(player));
+        }
         for (Region region : shown) {
             buttons.add(button(t(player, "win.row", region.coloredName(language), t(player, "win.treasury." + region.treasury().name().toLowerCase(Locale.ROOT)),
                     t(player, "win.mode." + region.protection().name().toLowerCase(Locale.ROOT))), "icon_map"));
@@ -115,7 +119,32 @@ public final class RegionWindow implements Listener {
         }
         if (current > 1) { buttons.add(button(t(player, "win.prev"), null)); actions.add(() -> list(player, current - 1)); }
         if (current < pages) { buttons.add(button(t(player, "win.next"), null)); actions.add(() -> list(player, current + 1)); }
+        buttons.add(button(t(player, "win.close"), null));
+        actions.add(() -> { });
         menu(player, title, content, buttons, index -> actions.get(index).run());
+    }
+
+    /** protection.outside: what applies in every place that is in no region. */
+    private void outside(Player player) {
+        if (!player.hasPermission("tokaregions.admin")) { list(player, 1); return; }
+        String now = plugin.getConfig().getString("protection.outside", "LOCK").strip().toUpperCase(Locale.ROOT);
+        int current = 0;
+        for (int i = 0; i < MODES.length; i++) if (MODES[i].name().equals(now)) current = i;
+        FormWindowCustom window = new FormWindowCustom(t(player, "win.outsideTitle"));
+        window.addElement(new ElementDropdown(t(player, "win.outsideLabel"), List.of(MODES).stream().map(m -> t(player, "win.mode." + m.name().toLowerCase(Locale.ROOT))).toList(), current));
+        show(player, window, event -> {
+            if (!event.wasClosed() && event.getResponse() instanceof FormResponseCustom response && player.hasPermission("tokaregions.admin")) {
+                Region.Protection chosen = MODES[response.getDropdownResponse(0).getElementID()];
+                if (chosen.name().equals(now)) { list(player, 1); return; }
+                try {
+                    plugin.setOutside(chosen.name());
+                    player.sendMessage(t(player, "win.outsideSaved", t(player, "win.mode." + chosen.name().toLowerCase(Locale.ROOT))));
+                } catch (java.io.IOException | RuntimeException failure) {
+                    player.sendMessage(t(player, "cmd.failed", String.valueOf(failure.getMessage())));
+                }
+            }
+            list(player, 1);
+        });
     }
 
     private void search(Player player) {
@@ -136,8 +165,10 @@ public final class RegionWindow implements Listener {
         Region region = plugin.regions().get(id).orElse(null);
         if (region == null) { list(player, 1); return; }
         var land = region.land();
-        String content = t(player, "win.info", region.world(), t(player, "win.mode." + region.protection().name().toLowerCase(Locale.ROOT)),
-                t(player, "win.treasury." + region.treasury().name().toLowerCase(Locale.ROOT)), onOff(player, land.purchaseAllowed()), onOff(player, land.flatPricing()),
+        String others = region.localizedNames().isEmpty() ? "-" : region.localizedNames().entrySet().stream().map(e -> e.getKey() + " " + e.getValue()).collect(java.util.stream.Collectors.joining("、"));
+        String content = t(player, "win.info", region.coloredName(language(player)), region.name(), region.id(), others, region.tag().isEmpty() ? "-" : region.tag(), region.world(),
+                t(player, "win.mode." + region.protection().name().toLowerCase(Locale.ROOT)), t(player, "win.treasury." + region.treasury().name().toLowerCase(Locale.ROOT)),
+                plugin.accountText(player, region), onOff(player, land.purchaseAllowed()), onOff(player, land.flatPricing()),
                 land.affiliatedOffer(), NumberFormat.getIntegerInstance(Locale.US).format(land.taxTiers().size()));
         List<ElementButton> buttons = new ArrayList<>();
         List<Runnable> actions = new ArrayList<>();
@@ -184,7 +215,7 @@ public final class RegionWindow implements Listener {
         Region region = plugin.regions().get(id).orElse(null);
         if (region == null || !player.hasPermission("tokaregions.admin")) { list(player, 1); return; }
         FormWindowCustom window = new FormWindowCustom(t(player, "win.editTitle", region.name()));
-        window.addElement(new ElementLabel(t(player, "win.editHint")));
+        window.addElement(new ElementHeader(t(player, "win.editHint")));
         window.addElement(new ElementDropdown(t(player, "win.editMode"), List.of(MODES).stream().map(m -> t(player, "win.mode." + m.name().toLowerCase(Locale.ROOT))).toList(), region.protection().ordinal()));
         window.addElement(new ElementToggle(t(player, "win.editBuy"), region.land().purchaseAllowed()));
         window.addElement(new ElementToggle(t(player, "win.editFlat"), region.land().flatPricing()));

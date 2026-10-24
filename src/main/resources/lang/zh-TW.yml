@@ -4,17 +4,14 @@ cmd:
   usage: "§e[區域] 用法錯誤，輸入 /region help 查看指令。"
 done: "§a[區域] 完成。"
 help:
-  title: "§6=== §f§l${0} 說明§r §6==="
-  index: "§e/${0} help ${1} §7- §b${2}（${3} 項）"
-  section: "§6--- §f${0}§r §7第 ${1}/${2} 頁 §6---"
-  next: "§8下一頁：/${0} help ${1} ${2}"
-  unknown: "§e沒有「${0}」這個說明區段，輸入 /${1} help 查看。"
+  title: "§6=== §f§l${0} 說明§r §7第 ${1}/${2} 頁 §6==="
+  next: "§8下一頁：/${0} help ${1}"
   sec:
-    read: "查看"
-    shape: "建立與追加選區"
-    edit: "編輯區域"
-    treasury: "國庫"
-    people: "標記與歸屬"
+    read: "§b基本：查看區域與戶籍"
+    shape: "§b建立與追加選區（管理員）"
+    edit: "§b編輯區域（管理員）"
+    treasury: "§b國庫（管理員）"
+    people: "§b標記與歸屬（管理員）"
   list: "§e/region list [頁] §7- §b列出區域"
   info: "§e/region info [名稱] §7- §b查看區域，不填為腳下"
   set: "§e/region set <名稱> [full] §7- §b以選區建立區域（full＝全高度）"
@@ -55,11 +52,16 @@ affil:
   # ${0}＝玩家、${1}＝區域
   assignedLog: "§b新玩家 §a${0} §b自動分到 §a${1}"
 info: "§b區域 §r${0}
-§b代號 §a${1}§b　ID §a${2}
+§b代號 §a${1}§b　ID §a${2} §b（區域本身）
 §b其他名稱 §r${3}§b　簡稱 §a${4}
 §b世界 §a${5}§b　保護 §a${6}§b　國庫 §a${7}
+§b國庫帳戶 §r${14}
 §b傳送點 §a${8}§b　範圍 §a${9} §b塊
 §b可購地 §a${10}§b　平面計價 §a${11}§b　歸屬優待 §a${12}§b　稅務 §a${13} §b段"
+account:
+  none: "沒有；款項進主國庫 ${0}"
+  noneAtAll: "沒有"
+  own: "${0}（屬於區域 ${1} 本身）"
 del:
   confirm: "§e[區域] 即將刪除 ${0}，歸屬於此區域的玩家會變成無歸屬。確認請輸入 /region del ${0} confirm"
 treasury:
@@ -101,18 +103,24 @@ ${1}・${2}"
     main: "主國庫"
   'on': "開"
   'off': "關"
-  info: "世界：${0}
-保護：${1}
-國庫：${2}
-可購地：${3}　平面計價：${4}
-歸屬優待：${5}
-稅務級距：${6} 段"
+  info: "名稱：${0}
+代號：${1}
+ID：${2}（區域本身）
+其他名稱：${3}
+簡稱：${4}
+世界：${5}
+保護：${6}
+國庫：${7}
+國庫帳戶：${8}
+可購地：${9}　平面計價：${10}
+歸屬優待：${11}
+稅務級距：${12} 段"
   edit: "編輯"
   delete: "刪除"
   deleteTitle: "刪除 ${0}"
   deleteBody: "歸屬於此區域的玩家會變成無歸屬，無法復原。確定刪除？"
   deleteYes: "刪除"
-  deleteNo: "取消"
+  deleteNo: "§c取消"
   editTitle: "編輯 ${0}"
   editHint: "只會套用有改的項目。"
   editMode: "保護模式"
@@ -131,6 +139,12 @@ ${1}・${2}"
   editColor: "名稱顏色"
   colorNone: "無"
   noChange: "§e[區域] 沒有變更。"
+  close: "§c關閉"
+  cancel: "§c取消"
+  outside: "區域外保護"
+  outsideTitle: "區域外保護"
+  outsideLabel: "所有區域以外的地方"
+  outsideSaved: "§a[區域] 區域外保護已改為 ${0}。"
 log:
   commandTaken: "§b指令 §a/region §b已由插件 §a${0} §b註冊，此次不註冊替代指令"
   commandFailed: "§c無法註冊指令 §a/region§c，請檢查指令衝突"
