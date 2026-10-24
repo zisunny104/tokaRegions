@@ -20,10 +20,16 @@ public final class RegionGuard implements Listener {
     private final Main plugin;
     private final LandLink land;
     private long lastReport;
+    /** What applies where no region is: the same three modes as a region has */
+    private final dev.toka.regions.model.Region.Protection outside;
 
     public RegionGuard(Main plugin, LandLink land) {
         this.plugin = plugin;
         this.land = land;
+        dev.toka.regions.model.Region.Protection parsed;
+        try { parsed = dev.toka.regions.model.Region.Protection.valueOf(plugin.getConfig().getString("protection.outside", "LOCK").strip().toUpperCase(java.util.Locale.ROOT)); }
+        catch (IllegalArgumentException unknown) { parsed = dev.toka.regions.model.Region.Protection.LOCK; }
+        this.outside = parsed;
     }
 
     /** Why the action is refused: null when it is allowed, LOCKED for a locked region, DENIED otherwise */
@@ -33,7 +39,13 @@ public final class RegionGuard implements Listener {
             String world = at.getLevel().getFolderName();
             int x = at.getFloorX(), y = at.getFloorY(), z = at.getFloorZ();
             var region = plugin.regions().at(world, x, y, z);
-            if (region.isEmpty()) return null;
+            if (region.isEmpty()) {
+                // outside every region: what protection.outside says, but a claim of tokaLand is protected by tokaLand, so it steps aside
+                if (outside == dev.toka.regions.model.Region.Protection.OPEN || Boolean.TRUE.equals(land.claimed(world, x, y, z))) return null;
+                boolean admin = player.isOp() || player.hasPermission("tokaregions.admin") || player.hasPermission("toka.identity.admin");
+                Boolean owns = outside == dev.toka.regions.model.Region.Protection.PROTECT && !admin ? land.ownsAny(player.getUniqueId()) : null;
+                return RegionAccess.denies(outside, admin, false, owns) ? (outside == dev.toka.regions.model.Region.Protection.LOCK ? "LOCKED" : "DENIED") : null;
+            }
             var mode = region.get().protection();
             boolean administrator = player.isOp() || player.hasPermission("tokaregions.admin") || player.hasPermission("toka.identity.admin");
             // Only ask tokaLand when the answer can matter.

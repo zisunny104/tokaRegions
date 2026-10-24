@@ -20,5 +20,8 @@ household:
 
 protection:
   # 是否由本插件執行各區域的保護模式（open／protect／lock）。為 false 時待命。換手時由轉換工具在停用舊保護後自動改成 true。
-  # protect：管理員，以及已有領地者可建造；領地內改由領地自己的規則決定。lock：只有管理員。
+  # protect：管理員，以及已有領地者可建造；領地內改由領地自己的規則決定。lock：任何人都不能動（包含管理員，靜默）。
   enforce: true
+  # 不在任何區域內的地方怎麼處理，和區域的保護模式一樣：OPEN 不限制；PROTECT 管理員與有領地的人可以動；
+  # LOCK 任何人都不能動（包含管理員，靜默），要動請先建區域。有 tokaLand 領地的地方一律交給領地規則。
+  outside: LOCK
