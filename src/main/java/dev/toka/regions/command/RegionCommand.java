@@ -36,7 +36,8 @@ public final class RegionCommand extends Command {
 
     /** A region name argument: the names that exist now as a list to pick from; a plain text when there are none yet. */
     private CommandParameter regionName(String id, boolean optional, String... extra) {
-        List<String> names = new ArrayList<>(plugin.regions().all().stream().map(Region::name).sorted(String.CASE_INSENSITIVE_ORDER).toList());
+        // the client refuses a list with a capital letter in it (and crashes), so names are offered in lower case; the lookup ignores case
+        List<String> names = new ArrayList<>(plugin.regions().all().stream().map(r -> r.name().toLowerCase(java.util.Locale.ROOT)).distinct().sorted().toList());
         names.addAll(List.of(extra));
         if (names.isEmpty()) return CommandParameter.newType(id, optional, CommandParamType.STRING);
         return CommandParameter.newEnum(id, optional, new CommandEnum("TokaRegionsName" + extra.length, names));
