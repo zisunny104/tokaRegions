@@ -63,6 +63,7 @@ treasury:
   noAccount: "§e[Region] ${0} has no account, or the economy is not ready."
 guard:
   denied: "§e[Region] This region is protected; you cannot do that here."
+  locked: "§e[Region] This region is locked and nobody can edit it; switch its protection to PROTECT first."
 selection:
   first: "§aRegion selection, first point: ${0} (${1}, ${2}, ${3})"
   second: "§aRegion selection, second point: ${0} (${1}, ${2}, ${3})"

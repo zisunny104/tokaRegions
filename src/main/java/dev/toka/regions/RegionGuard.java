@@ -26,54 +26,59 @@ public final class RegionGuard implements Listener {
         this.land = land;
     }
 
-    private boolean denies(Player player, Position at) {
-        if (at.getLevel() == null) return false;
+    /** Why the action is refused: null when it is allowed, LOCKED for a locked region, DENIED otherwise */
+    private String refusal(Player player, Position at, boolean building) {
+        if (at.getLevel() == null) return null;
         try {
             String world = at.getLevel().getFolderName();
             int x = at.getFloorX(), y = at.getFloorY(), z = at.getFloorZ();
             var region = plugin.regions().at(world, x, y, z);
-            if (region.isEmpty()) return false;
+            if (region.isEmpty()) return null;
             var mode = region.get().protection();
             boolean administrator = player.isOp() || player.hasPermission("tokaregions.admin") || player.hasPermission("toka.identity.admin");
             // Only ask tokaLand when the answer can matter.
             Boolean claimed = mode == dev.toka.regions.model.Region.Protection.PROTECT && !administrator ? land.claimed(world, x, y, z) : null;
             Boolean owns = mode == dev.toka.regions.model.Region.Protection.PROTECT && !administrator && !Boolean.TRUE.equals(claimed) ? land.ownsAny(player.getUniqueId()) : null;
-            return RegionAccess.denies(mode, administrator, claimed, owns);
+            boolean refused = building ? RegionAccess.deniesBuilding(mode, administrator, claimed, owns) : RegionAccess.denies(mode, administrator, claimed, owns);
+            return !refused ? null : mode == dev.toka.regions.model.Region.Protection.LOCK && building ? "LOCKED" : "DENIED";
         } catch (RuntimeException | LinkageError error) {
             long now = System.currentTimeMillis();
             if (now - lastReport > 60_000) {
                 lastReport = now;
                 plugin.warn("log.guardError", error);
             }
-            return false;
+            return null;
         }
     }
 
-    private void refuse(Player player, cn.nukkit.event.Cancellable event) {
+    private boolean refuse(Player player, Position at, boolean building, cn.nukkit.event.Cancellable event) {
+        String why = refusal(player, at, building);
+        if (why == null) return false;
         event.setCancelled();
-        player.sendMessage(plugin.text(player, "guard.denied"));
+        player.sendMessage(plugin.text(player, why.equals("LOCKED") ? "guard.locked" : "guard.denied"));
+        return true;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        if (denies(event.getPlayer(), event.getBlock())) refuse(event.getPlayer(), event);
+        refuse(event.getPlayer(), event.getBlock(), true, event);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
-        if (denies(event.getPlayer(), event.getBlock())) refuse(event.getPlayer(), event);
+        refuse(event.getPlayer(), event.getBlock(), true, event);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInteract(PlayerInteractEvent event) {
         var action = event.getAction();
-        if ((action == PlayerInteractEvent.Action.LEFT_CLICK_BLOCK || action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK)
-                && denies(event.getPlayer(), event.getBlock())) refuse(event.getPlayer(), event);
+        if (action == PlayerInteractEvent.Action.LEFT_CLICK_BLOCK || action == PlayerInteractEvent.Action.RIGHT_CLICK_BLOCK)
+            refuse(event.getPlayer(), event.getBlock(), false, event);
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onFrame(ItemFrameDropItemEvent event) {
         Position at = event.getItemFrame() != null ? event.getItemFrame() : event.getBlock();
-        if (denies(event.getPlayer(), at)) refuse(event.getPlayer(), event);
+        refuse(event.getPlayer(), at, true, event);
     }
 }
