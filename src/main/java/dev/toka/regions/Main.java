@@ -249,19 +249,34 @@ public final class Main extends PluginBase implements Listener {
         if (event.getPlugin().getName().equals("tokaProfiles")) {
             getServer().getOnlinePlayers().values().forEach(this::applyPending);
             getServer().getScheduler().scheduleDelayedTask(this, this::applyAllPending, 100);
+            cn.nukkit.event.HandlerList.unregisterAll(legacyAnnouncements);
+            listeningLegacy = false;
             getServer().getScheduler().scheduleTask(this, this::listenLegacy);
         }
     }
 
     private boolean listeningLegacy;
+    /** Apart from this plugin's own listener, so that removing the event handler leaves the other handlers alone. */
+    private final cn.nukkit.event.Listener legacyAnnouncements = new cn.nukkit.event.Listener() { };
 
     /** When tokaProfiles hands an old name to an account, the village the old record named becomes that account's affiliation. */
     private void listenLegacy() {
         Plugin profilesPlugin = getServer().getPluginManager().getPlugin("tokaProfiles");
         if (profilesPlugin == null || !profilesPlugin.isEnabled()) return;
+        if (listeningLegacy) return;
         try {
-            profilesPlugin.getClass().getMethod("onLegacyResolved", java.util.function.BiConsumer.class).invoke(null, (java.util.function.BiConsumer<String, UUID>) (name, uuid) ->
-                    getServer().getScheduler().scheduleTask(this, () -> applyVillage(profilesPlugin, uuid)));
+            Class<?> event = profilesPlugin.getClass().getClassLoader().loadClass("dev.toka.profiles.event.LegacyResolvedEvent");
+            java.lang.reflect.Method uuidOf = event.getMethod("getUuid");
+            getServer().getPluginManager().registerEvent(event.asSubclass(cn.nukkit.event.Event.class), legacyAnnouncements, cn.nukkit.event.EventPriority.NORMAL, (listener, fired) -> {
+                if (!event.isInstance(fired)) return;
+                try {
+                    UUID uuid = (UUID) uuidOf.invoke(fired);
+                    getServer().getScheduler().scheduleTask(this, () -> applyVillage(profilesPlugin, uuid));
+                } catch (ReflectiveOperationException | ClassCastException unavailable) {
+                    warn("log.legacyUnavailable", unavailable.getClass().getSimpleName());
+                }
+            }, this);
+            listeningLegacy = true;
         } catch (ReflectiveOperationException | LinkageError unavailable) {
             warn("log.legacyUnavailable", unavailable.getClass().getSimpleName());
         }
@@ -279,6 +294,8 @@ public final class Main extends PluginBase implements Listener {
     }
 
     @Override public void onDisable() {
+        cn.nukkit.event.HandlerList.unregisterAll(legacyAnnouncements);
+        listeningLegacy = false;
         getServer().getScheduler().cancelTask(this);
         LandProvider.unregister(this);
         DisplayLink.unregister(this);
