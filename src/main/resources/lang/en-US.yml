@@ -19,6 +19,7 @@ help:
   del: "§e/region del <name> [confirm] §7- §bDelete a region; affiliated players become unaffiliated"
   rename: "§e/region rename <name> <new> §7- §bRename"
   settp: "§e/region settp <name> §7- §bMake your position the region's teleport point"
+  show: "§e/region show|hide <name> §7- §bShow or hide the bounding box of a region (admin)"
   mode: "§e/region mode <name> <open|protect|lock> §7- §bSet the protection mode"
   land: "§e/region land <name> <buy|flat> <on|off> §7- §bSwitch land purchase and flat pricing"
   landOffer: "§e/region land <name> offer <0-1> §7- §bSet the offer for affiliated buyers"
@@ -68,6 +69,10 @@ guard:
 selection:
   first: "§aRegion selection, first point: ${0} (${1}, ${2}, ${3})"
   second: "§aRegion selection, second point: ${0} (${1}, ${2}, ${3})"
+bounds:
+  shown: "§b[Region] Showing the bounds of ${0}."
+  hidden: "§b[Region] Hid the bounds of ${0}."
+  missing: "§e[Region] The bounding box is not available (BoundingBoxAPI is missing)."
 reload:
   done: "§a[Region] Settings and texts reloaded."
 win:
@@ -112,6 +117,7 @@ Land purchase: ${9}  Flat pricing: ${10}
 Affiliation offer: ${11}
 Tax tiers: ${12}"
   edit: "Edit"
+  showBounds: "Show bounds"
   delete: "Delete"
   deleteTitle: "Delete ${0}"
   deleteBody: "Players affiliated with it will have none. This cannot be undone. Delete it?"

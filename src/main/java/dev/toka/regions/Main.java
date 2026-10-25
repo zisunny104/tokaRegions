@@ -340,6 +340,19 @@ public final class Main extends PluginBase implements Listener {
         return index.at(world, x, y, z).flatMap(index::accountFor).map(UUID::toString).orElse(null);
     }
     public RegionIndex regions() { return regions; }
+
+    /** Draws every part of a region for one player (the callers check that the player is an admin). */
+    public void showBounds(cn.nukkit.Player player, dev.toka.regions.model.Region region) {
+        if (!BoundingBoxLink.available(this)) { player.sendMessage(text(player, "bounds.missing")); return; }
+        int part = 0;
+        for (var selection : region.selections()) BoundingBoxLink.show(this, player, region.world(), selection, "region-" + region.id() + "-" + part++);
+        player.sendMessage(text(player, "bounds.shown", region.name()));
+    }
+
+    public void hideBounds(cn.nukkit.Player player, dev.toka.regions.model.Region region) {
+        for (int part = 0; part < region.selections().size(); part++) BoundingBoxLink.clear(this, player, "region-" + region.id() + "-" + part);
+        player.sendMessage(text(player, "bounds.hidden", region.name()));
+    }
     public ProfilesLink profiles() { return profiles; }
     public EconomyLink economy() { return economy; }
 

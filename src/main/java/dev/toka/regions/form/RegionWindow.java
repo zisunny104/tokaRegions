@@ -178,6 +178,7 @@ public final class RegionWindow implements Listener {
             actions.add(() -> { run(player, "household", region.name()); info(player, id); });
         }
         if (player.hasPermission("tokaregions.admin")) {
+            buttons.add(button(t(player, "win.showBounds"), "world_glyph_color")); actions.add(() -> plugin.showBounds(player, region));
             buttons.add(button(t(player, "win.edit"), "pencil_edit_icon")); actions.add(() -> edit(player, id));
             buttons.add(button(t(player, "win.delete"), "trash_default")); actions.add(() -> confirmDelete(player, id));
         }

@@ -61,6 +61,7 @@ public final class RegionCommand extends Command {
                 word("height", true, "TokaRegionsFull", "full")});
         addCommandParameters("del", new CommandParameter[]{word("action", false, "TokaRegionsDel", "del"), regionName("name", false), word("confirm", true, "TokaRegionsConfirm", "confirm")});
         addCommandParameters("rename", new CommandParameter[]{word("action", false, "TokaRegionsRename", "rename"), regionName("name", false), CommandParameter.newType("new", CommandParamType.STRING)});
+        addCommandParameters("show", new CommandParameter[]{word("action", false, "TokaRegionsShow", "show", "hide"), regionName("name", false)});
         addCommandParameters("settp", new CommandParameter[]{word("action", false, "TokaRegionsSettp", "settp"), regionName("name", false)});
         addCommandParameters("mode", new CommandParameter[]{word("action", false, "TokaRegionsMode", "mode"), regionName("name", false),
                 word("value", false, "TokaRegionsModeValue", "open", "protect", "lock")});
@@ -168,6 +169,14 @@ public final class RegionCommand extends Command {
 
     private void admin(CommandSender sender, String action, String[] args) throws IOException {
         switch (action) {
+            case "show" -> {
+                if (!(sender instanceof Player player)) throw new IllegalArgumentException("PLAYER_ONLY");
+                plugin.showBounds(player, find(need(args, 1)));
+            }
+            case "hide" -> {
+                if (!(sender instanceof Player player)) throw new IllegalArgumentException("PLAYER_ONLY");
+                plugin.hideBounds(player, find(need(args, 1)));
+            }
             case "set", "add" -> shape(sender, action.equals("add"), args);
             case "del" -> {
                 Region region = find(need(args, 1));

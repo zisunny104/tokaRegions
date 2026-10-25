@@ -1,9 +1,9 @@
 name: tokaRegions
 main: dev.toka.regions.Main
-version: "0.1.26"
+version: "0.1.27"
 api: ["1.0.4"]
 load: POSTWORLD
-softdepend: [tokaProfiles, tokaEconomy, tokaLand]
+softdepend: [BoundingBoxAPI, tokaProfiles, tokaEconomy, tokaLand]
 permissions:
   tokaregions.use:
     description: 查看區域資訊
