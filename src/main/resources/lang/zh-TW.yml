@@ -146,7 +146,6 @@ ID：${2}（區域本身）
   colorNone: "無"
   noChange: "§e[區域] 沒有變更。"
   close: "§c關閉"
-  cancel: "§c取消"
   outside: "區域外保護"
   outsideTitle: "區域外保護"
   outsideLabel: "所有區域以外的地方"

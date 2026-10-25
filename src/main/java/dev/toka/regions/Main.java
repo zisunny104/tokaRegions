@@ -315,6 +315,7 @@ public final class Main extends PluginBase implements Listener {
         return main == null ? null : main.regions.at(world, x, y, z).map(r -> r.name()).orElse(null);
     }
 
+    // TODO: reserved for log/Discord text hook-up (name without colour)
     /** The same name without its colour, for text that is not shown in the game (logs, Discord). */
     public static String plainRegionNameAt(String world, int x, int y, int z) {
         Main main = instance;
@@ -333,12 +334,6 @@ public final class Main extends PluginBase implements Listener {
         return main == null ? null : main.regions.mainAccountRegion().map(r -> r.id().toString()).orElse(null);
     }
 
-    public static String accountAt(String world, int x, int y, int z) {
-        Main main = instance;
-        if (main == null) return null;
-        RegionIndex index = main.regions;
-        return index.at(world, x, y, z).flatMap(index::accountFor).map(UUID::toString).orElse(null);
-    }
     public RegionIndex regions() { return regions; }
 
     /** Draws every part of a region for one player (the callers check that the player is an admin). */

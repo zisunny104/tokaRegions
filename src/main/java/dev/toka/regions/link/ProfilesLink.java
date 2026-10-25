@@ -32,6 +32,7 @@ public final class ProfilesLink {
         }
     }
 
+    // TODO: reserved for welcome-page hook-up with tokaProfiles
     /** Whether the player is new and still has to read the welcome pages (a profile made at the first login). */
     public boolean isNew(UUID player) {
         try {
