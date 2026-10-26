@@ -113,7 +113,7 @@ public final class RegionWindow implements Listener {
             actions.add(() -> outside(player));
         }
         for (Region region : shown) {
-            buttons.add(button(t(player, "win.row", region.coloredName(language), t(player, "win.treasury." + region.treasury().name().toLowerCase(Locale.ROOT)),
+            buttons.add(button(t(player, "win.row", region.displayName(language), t(player, "win.treasury." + region.treasury().name().toLowerCase(Locale.ROOT)),
                     t(player, "win.mode." + region.protection().name().toLowerCase(Locale.ROOT))), "icon_map"));
             actions.add(() -> info(player, region.id()));
         }
@@ -204,7 +204,7 @@ public final class RegionWindow implements Listener {
         List<Region> villages = change ? plugin.villages() : List.of();
         List<ElementButton> buttons = new ArrayList<>();
         buttons.add(button(t(player, "win.back"), "arrow_left"));
-        villages.forEach(v -> buttons.add(button(v.coloredName(language), "icon_map")));
+        villages.forEach(v -> buttons.add(button(v.displayName(language), "icon_map")));
         String content = t(player, "win.householdBody", current) + (change ? "" : "\n" + t(player, "win.householdLocked"));
         menu(player, t(player, "win.household"), content, buttons, index -> {
             if (index > 0) run(player, "household", villages.get(index - 1).name());
