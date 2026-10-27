@@ -15,7 +15,7 @@ import java.util.function.UnaryOperator;
 
 /** /region: lookups for everyone, upkeep for administrators. Region data is small, so edits save in place on the server thread. */
 public final class RegionCommand extends Command {
-    private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "tag", "color", "help", "menu", "reload", "household");
+    private static final Set<String> RESERVED = Set.of("list", "info", "set", "add", "del", "rename", "settp", "mode", "land", "tax", "affil", "adjust", "treasury", "tag", "label", "color", "help", "menu", "reload", "household");
     private final Main plugin;
     private final HelpPages help;
 
@@ -24,8 +24,8 @@ public final class RegionCommand extends Command {
         this.plugin = plugin;
         help = new HelpPages("region", List.of(
                 new HelpPages.Section("read", null, List.of("list", "info", "menu", "household")),
-                new HelpPages.Section("shape", "tokaregions.admin", List.of("set", "add")),
-                new HelpPages.Section("edit", "tokaregions.admin", List.of("del", "rename", "settp", "mode", "land", "landOffer", "tax", "taxClear", "reload")),
+                new HelpPages.Section("shape", "tokaregions.admin", List.of("set", "setWorld", "add")),
+                new HelpPages.Section("edit", "tokaregions.admin", List.of("del", "rename", "label", "settp", "mode", "land", "landOffer", "tax", "taxClear", "reload")),
                 new HelpPages.Section("treasury", "tokaregions.admin", List.of("treasuryMode", "treasuryBalance", "treasuryPay", "treasuryMove")),
                 new HelpPages.Section("people", "tokaregions.admin", List.of("tag", "color", "affil", "adjust", "adjustClear"))), plugin::text);
         setPermission("tokaregions.use;tokaregions.admin");
@@ -59,6 +59,10 @@ public final class RegionCommand extends Command {
                 CommandParameter.newType("page", true, CommandParamType.INT)});
         addCommandParameters("shape", new CommandParameter[]{word("action", false, "TokaRegionsShape", "set", "add"), CommandParameter.newType("name", CommandParamType.STRING),
                 word("height", true, "TokaRegionsFull", "full")});
+        addCommandParameters("shapeWorld", new CommandParameter[]{word("action", false, "TokaRegionsShapeWorld", "set"), CommandParameter.newType("name", CommandParamType.STRING),
+                word("world", false, "TokaRegionsWorld", "world"), CommandParameter.newType("level", true, CommandParamType.STRING)});
+        addCommandParameters("label", new CommandParameter[]{word("action", false, "TokaRegionsLabel", "label"), regionName("name", false),
+                CommandParameter.newType("language", CommandParamType.STRING), CommandParameter.newType("text", true, CommandParamType.STRING)});
         addCommandParameters("del", new CommandParameter[]{word("action", false, "TokaRegionsDel", "del"), regionName("name", false), word("confirm", true, "TokaRegionsConfirm", "confirm")});
         addCommandParameters("rename", new CommandParameter[]{word("action", false, "TokaRegionsRename", "rename"), regionName("name", false), CommandParameter.newType("new", CommandParamType.STRING)});
         addCommandParameters("show", new CommandParameter[]{word("action", false, "TokaRegionsShow", "show", "hide"), regionName("name", false)});
@@ -188,6 +192,16 @@ public final class RegionCommand extends Command {
                 if (RESERVED.contains(need(args, 2).toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME");
                 change(sender, need(args, 1), r -> copy(r, need(args, 2), r.protection(), r.land(), r.teleport(), r.selections()));
             }
+            case "label" -> {
+                // /region label <名稱> <語言> [文字]：設定區域在該語言下顯示的名稱，不填文字就清除
+                String language = need(args, 2);
+                String text = args.length > 3 ? String.join(" ", java.util.Arrays.copyOfRange(args, 3, args.length)).trim() : "";
+                change(sender, need(args, 1), r -> {
+                    var names = new java.util.HashMap<>(r.localizedNames());
+                    if (text.isEmpty()) names.remove(language); else names.put(language, text);
+                    return new Region(r.id(), r.name(), names, r.world(), r.selections(), r.protection(), r.land(), r.teleport(), r.treasury(), r.tag(), r.color());
+                });
+            }
             case "settp" -> {
                 if (!(sender instanceof Player p)) throw new IllegalArgumentException("PLAYER_ONLY");
                 change(sender, need(args, 1), r -> {
@@ -258,7 +272,22 @@ public final class RegionCommand extends Command {
         return new LandRules(old.purchaseAllowed(), old.flatPricing(), old.affiliatedOffer(), tiers);
     }
 
+    /** /region set <名稱> world [世界]：整個世界一個區域，範圍用 selection.world-radius，高度同 full；不填世界就是腳下的世界。 */
+    private void worldRegion(CommandSender sender, String[] args) throws IOException {
+        String name = need(args, 1);
+        if (RESERVED.contains(name.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME");
+        cn.nukkit.level.Level level = args.length > 3 ? plugin.getServer().getLevelByName(args[3]) : sender instanceof Player p ? p.getLevel() : null;
+        if (level == null) throw new IllegalArgumentException(args.length > 3 ? "WORLD_UNKNOWN" : "WORLD_REQUIRED");
+        int radius = plugin.getConfig().getInt("selection.world-radius", 15000);
+        var part = new RegionSelection(-radius, plugin.getConfig().getInt("selection.full-min-y", 0), -radius, radius, plugin.getConfig().getInt("selection.full-max-y", 255), radius);
+        List<Region> next = new ArrayList<>(plugin.regions().all());
+        next.add(new Region(UUID.randomUUID(), name, Map.of(), level.getFolderName(), List.of(part), Region.Protection.OPEN, LandRules.closed(), null));
+        save(next);
+        send(sender, "done");
+    }
+
     private void shape(CommandSender sender, boolean add, String[] args) throws IOException {
+        if (!add && args.length > 2 && args[2].equalsIgnoreCase("world")) { worldRegion(sender, args); return; }
         if (!(sender instanceof Player player)) throw new IllegalArgumentException("PLAYER_ONLY");
         String name = need(args, 1);
         if (RESERVED.contains(name.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME");

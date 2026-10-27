@@ -12,6 +12,8 @@ selection:
   # /region set ... full 使用的高度範圍。
   full-min-y: 0
   full-max-y: 255
+  # /region set <名稱> world 的範圍：以原點為中心，往四方各幾格（現有的世界區域是 15000）。
+  world-radius: 15000
 # 戶籍：玩家可以登記的區域（寫區域名稱）。新玩家會由 tokaProfiles 從這裡隨機分到一個；留空就不自動分配。
 household:
   villages: []
