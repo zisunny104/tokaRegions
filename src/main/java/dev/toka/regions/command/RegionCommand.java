@@ -120,7 +120,7 @@ public final class RegionCommand extends Command {
                 }
             }
         } catch (IllegalArgumentException | IllegalStateException | IOException failure) {
-            send(sender, "cmd.failed", failure.getMessage());
+            send(sender, "cmd.failed", reason(sender, failure.getMessage()));
         }
         return true;
     }
@@ -169,7 +169,20 @@ public final class RegionCommand extends Command {
                 .orElseThrow(() -> new IllegalArgumentException("NOT_IN_REGION"));
     }
 
-    private Region find(String name) { return plugin.regions().byName(name).orElseThrow(() -> new IllegalArgumentException("REGION_NOT_FOUND")); }
+    private Region find(String name) { return plugin.regions().byName(name).orElseThrow(() -> new IllegalArgumentException("REGION_NOT_FOUND|" + name)); }
+
+    /** The codes the commands fail with; each has a text under err.<code>, a code may carry its detail after a bar. */
+    private static final Set<String> ERROR_CODES = Set.of("PLAYER_ONLY", "WORLD_UNKNOWN", "WORLD_REQUIRED", "REGION_NOT_FOUND", "NAME_REQUIRED", "RESERVED_NAME", "SELECTION_REQUIRED", "WORLD_MISMATCH",
+            "NOT_IN_REGION", "TELEPORT_OUTSIDE_REGION", "INVALID_COLOR", "TAG_TOO_LONG", "USAGE", "AMOUNT", "PAGE", "HOUSEHOLD_LOCKED", "NOT_A_VILLAGE");
+
+    private String reason(CommandSender sender, String message) {
+        if (message == null) return "?";
+        if (message.startsWith("regions overlap: ")) return plugin.text(sender, "err.OVERLAP", (Object[]) message.substring("regions overlap: ".length()).split(", ", 2));
+        if (message.startsWith("duplicate region name: ")) return plugin.text(sender, "err.DUPLICATE_NAME", message.substring("duplicate region name: ".length()));
+        String[] parts = message.split("\\|", 2);
+        if (!ERROR_CODES.contains(parts[0])) return message;
+        return plugin.text(sender, "err." + parts[0], (Object[]) (parts.length > 1 ? new String[]{parts[1]} : new String[0]));
+    }
 
     private void admin(CommandSender sender, String action, String[] args) throws IOException {
         switch (action) {
@@ -186,11 +199,11 @@ public final class RegionCommand extends Command {
                 Region region = find(need(args, 1));
                 if (args.length < 3 || !args[2].equalsIgnoreCase("confirm")) { send(sender, "del.confirm", region.name()); return; }
                 save(plugin.regions().all().stream().filter(r -> !r.id().equals(region.id())).toList());
-                send(sender, "done");
+                send(sender, "done.del", region.name());
             }
             case "rename" -> {
-                if (RESERVED.contains(need(args, 2).toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME");
-                change(sender, need(args, 1), r -> copy(r, need(args, 2), r.protection(), r.land(), r.teleport(), r.selections()));
+                if (RESERVED.contains(need(args, 2).toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME|" + args[2]);
+                change(sender, need(args, 1), r -> copy(r, need(args, 2), r.protection(), r.land(), r.teleport(), r.selections()), "done.rename", args[1], args[2]);
             }
             case "label" -> {
                 // /region label <名稱> <語言> [文字]：設定區域在該語言下顯示的名稱，不填文字就清除
@@ -200,16 +213,16 @@ public final class RegionCommand extends Command {
                     var names = new java.util.HashMap<>(r.localizedNames());
                     if (text.isEmpty()) names.remove(language); else names.put(language, text);
                     return new Region(r.id(), r.name(), names, r.world(), r.selections(), r.protection(), r.land(), r.teleport(), r.treasury(), r.tag(), r.color());
-                });
+                }, text.isEmpty() ? "done.labelClear" : "done.label", args[1], language, text);
             }
             case "settp" -> {
                 if (!(sender instanceof Player p)) throw new IllegalArgumentException("PLAYER_ONLY");
                 change(sender, need(args, 1), r -> {
                     if (!r.contains(p.getLevel().getFolderName(), p.getFloorX(), p.getFloorY(), p.getFloorZ())) throw new IllegalArgumentException("TELEPORT_OUTSIDE_REGION");
                     return copy(r, r.name(), r.protection(), r.land(), new Region.Teleport(p.x, p.y, p.z, (float) p.yaw, (float) p.pitch), r.selections());
-                });
+                }, "done.settp", args[1], p.getFloorX(), p.getFloorY(), p.getFloorZ());
             }
-            case "mode" -> change(sender, need(args, 1), r -> copy(r, r.name(), Region.Protection.valueOf(need(args, 2).toUpperCase(Locale.ROOT)), r.land(), r.teleport(), r.selections()));
+            case "mode" -> change(sender, need(args, 1), r -> copy(r, r.name(), Region.Protection.valueOf(need(args, 2).toUpperCase(Locale.ROOT)), r.land(), r.teleport(), r.selections()), "done.mode", args[1], need(args, 2).toLowerCase(Locale.ROOT));
             case "land" -> change(sender, need(args, 1), r -> copy(r, r.name(), r.protection(), landRules(r.land(), need(args, 2), need(args, 3)), r.teleport(), r.selections()));
             case "tax" -> change(sender, need(args, 1), r -> copy(r, r.name(), r.protection(), taxRules(r.land(), args), r.teleport(), r.selections()));
             case "treasury" -> treasury(sender, args);
@@ -275,22 +288,22 @@ public final class RegionCommand extends Command {
     /** /region set <名稱> world [世界]：整個世界一個區域，範圍用 selection.world-radius，高度同 full；不填世界就是腳下的世界。 */
     private void worldRegion(CommandSender sender, String[] args) throws IOException {
         String name = need(args, 1);
-        if (RESERVED.contains(name.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME");
+        if (RESERVED.contains(name.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME|" + name);
         cn.nukkit.level.Level level = args.length > 3 ? plugin.getServer().getLevelByName(args[3]) : sender instanceof Player p ? p.getLevel() : null;
-        if (level == null) throw new IllegalArgumentException(args.length > 3 ? "WORLD_UNKNOWN" : "WORLD_REQUIRED");
+        if (level == null) throw new IllegalArgumentException(args.length > 3 ? "WORLD_UNKNOWN|" + args[3] : "WORLD_REQUIRED");
         int radius = plugin.getConfig().getInt("selection.world-radius", 15000);
         var part = new RegionSelection(-radius, plugin.getConfig().getInt("selection.full-min-y", 0), -radius, radius, plugin.getConfig().getInt("selection.full-max-y", 255), radius);
         List<Region> next = new ArrayList<>(plugin.regions().all());
         next.add(new Region(UUID.randomUUID(), name, Map.of(), level.getFolderName(), List.of(part), Region.Protection.OPEN, LandRules.closed(), null));
         save(next);
-        send(sender, "done");
+        send(sender, "done.world", name, level.getFolderName(), radius, part.minY(), part.maxY());
     }
 
     private void shape(CommandSender sender, boolean add, String[] args) throws IOException {
         if (!add && args.length > 2 && args[2].equalsIgnoreCase("world")) { worldRegion(sender, args); return; }
         if (!(sender instanceof Player player)) throw new IllegalArgumentException("PLAYER_ONLY");
         String name = need(args, 1);
-        if (RESERVED.contains(name.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME");
+        if (RESERVED.contains(name.toLowerCase(Locale.ROOT))) throw new IllegalArgumentException("RESERVED_NAME|" + name);
         SelectionTool.Corners corners = plugin.selection().get(player.getUniqueId()).orElseThrow(() -> new IllegalArgumentException("SELECTION_REQUIRED"));
         boolean full = args.length > 2 && args[2].equalsIgnoreCase("full");
         int minY = full ? plugin.getConfig().getInt("selection.full-min-y", 0) : Math.min(corners.first().y(), corners.second().y());
@@ -308,7 +321,7 @@ public final class RegionCommand extends Command {
         }
         save(next);
         plugin.selection().forget(player.getUniqueId());
-        send(sender, "done");
+        send(sender, add ? "done.add" : "done.set", name, corners.first().world(), part.minX(), part.minZ(), part.maxX(), part.maxZ(), part.minY(), part.maxY());
     }
 
     /** treasury <region> none|own|main, treasury <region> balance, treasury <region> pay <player> <amount>, treasury <region> move <to> <amount>. */
@@ -343,17 +356,22 @@ public final class RegionCommand extends Command {
         // A fresh operation id per command run: pressing enter twice moves money twice, but a retry of one run cannot.
         plugin.economy().transfer(from, to, amount, "treasury:" + UUID.randomUUID()).whenComplete((status, error) ->
                 plugin.getServer().getScheduler().scheduleTask(plugin, () -> {
-                    if (error == null && status.equals("OK")) send(sender, "done");
+                    if (error == null && status.equals("OK")) send(sender, "done.transfer", amount);
                     else send(sender, "cmd.failed", error == null ? status : String.valueOf(error.getMessage()));
                 }));
     }
 
     private void change(CommandSender sender, String name, UnaryOperator<Region> edit) throws IOException {
+        change(sender, name, edit, "done.updated", name);
+    }
+
+    /** Saves the edited region and tells what was done, with the key and arguments of the text that says it. */
+    private void change(CommandSender sender, String name, UnaryOperator<Region> edit, String doneKey, Object... doneArgs) throws IOException {
         Region old = find(name);
         List<Region> next = new ArrayList<>(plugin.regions().all());
         next.replaceAll(r -> r.id().equals(old.id()) ? edit.apply(r) : r);
         save(next);
-        send(sender, "done");
+        send(sender, doneKey, doneArgs);
     }
 
     private void save(Collection<Region> next) throws IOException { plugin.saveRegions(next); }
@@ -386,6 +404,6 @@ public final class RegionCommand extends Command {
             all.add(new TaxAdjustment(who, Double.parseDouble(args[2]), String.join(" ", Arrays.copyOfRange(args, 3, args.length)), by, System.currentTimeMillis(), null));
         }
         plugin.saveAdjustments(all);
-        send(sender, "done");
+        send(sender, "done.adjust");
     }
 }
