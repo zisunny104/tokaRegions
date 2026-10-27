@@ -78,6 +78,11 @@ public record Region(UUID id, String name, Map<String, String> localizedNames, S
 
     public String displayName(String languageTag) {
         if (languageTag == null || languageTag.isBlank()) return name;
-        return localizedNames.getOrDefault(languageTag, localizedNames.getOrDefault(languageTag.split("[-_]")[0], name));
+        String exact = localizedNames.get(languageTag);
+        if (exact != null) return exact;
+        // the same language of another country (en-GB for a name written for en-US) reads the same name
+        String language = languageTag.split("[-_]")[0];
+        return localizedNames.entrySet().stream().filter(e -> e.getKey().split("[-_]")[0].equalsIgnoreCase(language))
+                .min(java.util.Map.Entry.comparingByKey()).map(java.util.Map.Entry::getValue).orElse(name);
     }
 }
