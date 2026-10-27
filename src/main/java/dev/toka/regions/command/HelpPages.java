@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Chat help in pages: "/cmd help [page]". Page 1 is the basics everyone uses; every later page is one topic, introduced by a
- * line saying what it is, and a topic the sender may not use is left out. A page that is not a number shows the first page.
+ * Chat help in pages: "/cmd help [page]". The topics follow one another and fill the pages; a topic the sender may not use is left
+ * out. A page that is not a number shows the first page.
  */
 public final class HelpPages {
     public interface Text { String of(CommandSender sender, String key, Object... args); }
@@ -14,7 +14,7 @@ public final class HelpPages {
     /** @param permission null when everyone may see the section */
     public record Section(String id, String permission, List<String> keys) {}
 
-    private static final int PER_PAGE = 8;
+    private static final int PER_PAGE = 10;
     private final String command;
     private final List<Section> sections;
     private final Text text;
@@ -25,18 +25,23 @@ public final class HelpPages {
         this.text = text;
     }
 
-    /** Each page is the topic line and up to PER_PAGE command lines of one section. */
+    /**
+     * The topic lines and the command lines of the sections the sender may see, one after the other, cut into pages of PER_PAGE
+     * lines so that every page is full; a topic line is never the last line of a page, it goes on with its commands.
+     */
     private List<List<String>> pages(CommandSender sender) {
         List<List<String>> pages = new ArrayList<>();
+        List<String> page = new ArrayList<>();
         for (Section section : sections) {
             if (section.permission() != null && !sender.hasPermission(section.permission())) continue;
-            for (int from = 0; from < section.keys().size(); from += PER_PAGE) {
-                List<String> page = new ArrayList<>();
-                page.add(text.of(sender, "help.sec." + section.id()));
-                for (String key : section.keys().subList(from, Math.min(section.keys().size(), from + PER_PAGE))) page.add(text.of(sender, "help." + key));
-                pages.add(page);
+            if (page.size() >= PER_PAGE - 1) { pages.add(page); page = new ArrayList<>(); }
+            page.add(text.of(sender, "help.sec." + section.id()));
+            for (String key : section.keys()) {
+                if (page.size() >= PER_PAGE) { pages.add(page); page = new ArrayList<>(); }
+                page.add(text.of(sender, "help." + key));
             }
         }
+        if (!page.isEmpty()) pages.add(page);
         return pages;
     }
 
