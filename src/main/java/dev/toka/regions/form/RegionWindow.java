@@ -231,6 +231,7 @@ public final class RegionWindow implements Listener {
         for (String code : COLORS) colors.add("§" + code + "&" + code);
         int colorIndex = region.color().isEmpty() ? 0 : List.of(COLORS).indexOf(region.color().substring(1)) + 1;
         window.addElement(new ElementDropdown(t(player, "win.editColor"), colors, colorIndex));
+        window.addElement(new ElementInput(t(player, "win.editLabel", language(player)), "", region.localizedNames().getOrDefault(language(player), "")));
         show(player, window, event -> {
             if (!event.wasClosed() && event.getResponse() instanceof FormResponseCustom response) apply(player, region, response);
             info(player, id);
@@ -265,6 +266,8 @@ public final class RegionWindow implements Listener {
         int color = response.getDropdownResponse(11).getElementID();
         String code = color == 0 ? "" : "§" + COLORS[color - 1];
         if (!code.equals(region.color())) { run(player, "color", name, color == 0 ? "clear" : "&" + COLORS[color - 1]); changed = true; }
+        String label = response.getInputResponse(12) == null ? "" : response.getInputResponse(12).strip();
+        if (!label.equals(region.localizedNames().getOrDefault(language(player), ""))) { run(player, "label", name, language(player), label); changed = true; }
         if (!changed) player.sendMessage(t(player, "win.noChange"));
     }
 

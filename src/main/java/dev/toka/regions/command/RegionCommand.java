@@ -61,37 +61,14 @@ public final class RegionCommand extends Command {
                 word("height", true, "TokaRegionsFull", "full")});
         addCommandParameters("shapeWorld", new CommandParameter[]{word("action", false, "TokaRegionsShapeWorld", "set"), CommandParameter.newType("name", CommandParamType.STRING),
                 word("world", false, "TokaRegionsWorld", "world"), CommandParameter.newType("level", true, CommandParamType.STRING)});
-        addCommandParameters("label", new CommandParameter[]{word("action", false, "TokaRegionsLabel", "label"), regionName("name", false),
-                CommandParameter.newType("language", CommandParamType.STRING), CommandParameter.newType("text", true, CommandParamType.STRING)});
-        addCommandParameters("del", new CommandParameter[]{word("action", false, "TokaRegionsDel", "del"), regionName("name", false), word("confirm", true, "TokaRegionsConfirm", "confirm")});
-        addCommandParameters("rename", new CommandParameter[]{word("action", false, "TokaRegionsRename", "rename"), regionName("name", false), CommandParameter.newType("new", CommandParamType.STRING)});
-        addCommandParameters("show", new CommandParameter[]{word("action", false, "TokaRegionsShow", "show", "hide"), regionName("name", false)});
-        addCommandParameters("settp", new CommandParameter[]{word("action", false, "TokaRegionsSettp", "settp"), regionName("name", false)});
+        // The region the player stands in is the default for the commands that take a region name, so they are one line of free text
+        // after the word (/region help describes them); only the words used most keep a line of their own.
         addCommandParameters("mode", new CommandParameter[]{word("action", false, "TokaRegionsMode", "mode"), regionName("name", false),
                 word("value", false, "TokaRegionsModeValue", "open", "protect", "lock")});
-        addCommandParameters("land", new CommandParameter[]{word("action", false, "TokaRegionsLand", "land"), regionName("name", false),
-                word("what", false, "TokaRegionsLandWhat", "buy", "flat", "offer"), CommandParameter.newType("value", CommandParamType.STRING)});
-        addCommandParameters("tax", new CommandParameter[]{word("action", false, "TokaRegionsTax", "tax"), regionName("name", false),
-                word("what", false, "TokaRegionsTaxAdd", "add"), CommandParameter.newType("over", CommandParamType.INT),
-                CommandParameter.newType("rate", CommandParamType.FLOAT), CommandParameter.newType("outsider", true, CommandParamType.FLOAT)});
-        addCommandParameters("taxClear", new CommandParameter[]{word("action", false, "TokaRegionsTax", "tax"), regionName("name", false),
-                word("what", false, "TokaRegionsTaxClear", "clear")});
-        addCommandParameters("treasury", new CommandParameter[]{word("action", false, "TokaRegionsTreasury", "treasury"), regionName("name", false),
-                word("what", false, "TokaRegionsTreasuryWhat", "none", "own", "main", "balance")});
-        addCommandParameters("treasuryPay", new CommandParameter[]{word("action", false, "TokaRegionsTreasury", "treasury"), regionName("name", false),
-                word("what", false, "TokaRegionsTreasuryPay", "pay"), CommandParameter.newType("player", CommandParamType.STRING), CommandParameter.newType("amount", CommandParamType.INT)});
-        addCommandParameters("treasuryMove", new CommandParameter[]{word("action", false, "TokaRegionsTreasury", "treasury"), regionName("name", false),
-                word("what", false, "TokaRegionsTreasuryMove", "move"), regionName("target", false), CommandParameter.newType("amount", CommandParamType.INT)});
-        addCommandParameters("tag", new CommandParameter[]{word("action", false, "TokaRegionsTag", "tag"), regionName("name", false),
-                CommandParameter.newType("text", true, CommandParamType.RAWTEXT)});
-        addCommandParameters("color", new CommandParameter[]{word("action", false, "TokaRegionsColor", "color"), regionName("name", false),
-                word("code", true, "TokaRegionsColorCode", COLORS)});
-        addCommandParameters("affil", new CommandParameter[]{word("action", false, "TokaRegionsAffil", "affil"), CommandParameter.newType("player", CommandParamType.STRING),
-                regionName("region", false, "none")});
-        addCommandParameters("adjust", new CommandParameter[]{word("action", false, "TokaRegionsAdjust", "adjust"), CommandParameter.newType("player", CommandParamType.STRING),
-                CommandParameter.newType("rate", CommandParamType.FLOAT), CommandParameter.newType("reason", CommandParamType.RAWTEXT)});
-        addCommandParameters("adjustClear", new CommandParameter[]{word("action", false, "TokaRegionsAdjust", "adjust"), CommandParameter.newType("player", CommandParamType.STRING),
-                word("what", false, "TokaRegionsAdjustClear", "clear")});
+        addCommandParameters("modeHere", new CommandParameter[]{word("action", false, "TokaRegionsModeHere", "mode"),
+                word("value", false, "TokaRegionsModeValueHere", "open", "protect", "lock")});
+        addCommandParameters("admin", new CommandParameter[]{word("action", false, "TokaRegionsAction", "del", "rename", "label", "show", "hide", "settp", "land", "tax", "treasury", "tag", "color", "affil", "adjust"),
+                CommandParameter.newType("arguments", true, CommandParamType.RAWTEXT)});
     }
 
     private void send(CommandSender sender, String key, Object... args) { sender.sendMessage(plugin.text(sender, key, args)); }
@@ -184,7 +161,23 @@ public final class RegionCommand extends Command {
         return plugin.text(sender, "err." + parts[0], (Object[]) (parts.length > 1 ? new String[]{parts[1]} : new String[0]));
     }
 
-    private void admin(CommandSender sender, String action, String[] args) throws IOException {
+    /** The commands whose first argument is a region name: without one, the region the player stands in is meant. */
+    private static final Set<String> NAMED = Set.of("del", "rename", "label", "show", "hide", "settp", "mode", "land", "tax", "treasury", "tag", "color");
+
+    private String[] withRegionHere(CommandSender sender, String action, String[] args) {
+        if (!NAMED.contains(action) || !(sender instanceof Player player)) return args;
+        if (args.length > 1 && plugin.regions().byName(args[1]).isPresent()) return args;
+        var here = plugin.regions().at(player.getLevel().getFolderName(), player.getFloorX(), player.getFloorY(), player.getFloorZ());
+        if (here.isEmpty()) return args;
+        String[] withName = new String[args.length + 1];
+        withName[0] = args[0];
+        withName[1] = here.get().name();
+        System.arraycopy(args, 1, withName, 2, args.length - 1);
+        return withName;
+    }
+
+    private void admin(CommandSender sender, String action, String[] given) throws IOException {
+        String[] args = withRegionHere(sender, action, given);
         switch (action) {
             case "show" -> {
                 if (!(sender instanceof Player player)) throw new IllegalArgumentException("PLAYER_ONLY");

@@ -1,6 +1,6 @@
 name: tokaRegions
 main: dev.toka.regions.Main
-version: 0.1.33
+version: 0.1.35
 api: ["1.0.4"]
 load: POSTWORLD
 softdepend: [BoundingBoxAPI, tokaProfiles, tokaEconomy, tokaLand]
